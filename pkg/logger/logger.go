@@ -2,8 +2,10 @@ package logger
 
 import (
 	"io"
+	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	easy "github.com/t-tomalak/logrus-easy-formatter"
@@ -11,19 +13,6 @@ import (
 
 var entry *logrus.Entry
 var HookTargets []io.Writer
-
-type LogWorker struct {
-	*logrus.Entry
-}
-
-func ReturnEntry() LogWorker {
-	return LogWorker{entry}
-}
-
-type writerHook struct {
-	Writer    []io.Writer
-	LogLevels []logrus.Level
-}
 
 func (h *writerHook) Fire(entr *logrus.Entry) error {
 	str, err := entr.String()
@@ -70,3 +59,24 @@ func InitLogger(path, filename string) error {
 	return nil
 }
 
+func InitLoggingWithConfig(config LoggingConfig) error {
+	logfile := "trace.log"
+
+	if config.Renew {
+		logfile = "trace." + time.Now().Format("2017.09.07 17:06:06") + ".log"
+	}
+
+	if err := InitLogger(config.Dir, logfile); err != nil {
+
+		errDefault := InitLogger("", "trace.log")
+
+		if errDefault != nil {
+			log.Fatalf("can't start app: %s", err)
+		}
+
+		ReturnEntry().Errorf("can't use log config: %s", err)
+		return err
+	}
+
+	return nil
+}
