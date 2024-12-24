@@ -1,3 +1,5 @@
 desky-backend
 web
 trace*
+logging/*
+!logging/.keep

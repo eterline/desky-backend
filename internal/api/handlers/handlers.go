@@ -1,53 +1,69 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/eterline/desky-backend/pkg/logger"
-	"github.com/sirupsen/logrus"
 )
 
-type ApiHandler struct {
-	WebDir, FrontFile string
-	log               *logrus.Logger
+type ApiHandleFunc func(http.ResponseWriter, *http.Request) (op string, err error)
 
-	_ struct{}
-}
+func InitController(handle ApiHandleFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.ReturnEntry()
 
-func Init() *ApiHandler {
-	return &ApiHandler{
-		WebDir:    "./web",
-		FrontFile: "index.html",
-		log:       logger.ReturnEntry().Logger,
+		op, err := handle(w, r)
+
+		log.Debugf("requested controller: %s", op)
+
+		if err != nil {
+
+			var errResponse APIErrorResponse
+
+			if apiError, ok := err.(*APIErrorResponse); ok {
+				errResponse = *apiError
+			} else {
+				errResponse = InternalError()
+			}
+
+			WriteJSON(w, errResponse.StatusCode, errResponse)
+
+			log.Errorf(
+				"API Error - path: %s | controller: %s | error: %s",
+				r.URL.Path, op, err.Error(),
+			)
+		}
 	}
 }
 
-// Main frontend handlers ===============================
-
-func (h *ApiHandler) Front(w http.ResponseWriter, r *http.Request) {
-	h.serveFile(w, r, h.FrontFile)
+func InvalidRequestData(errors DataErrors) APIErrorResponse {
+	return APIErrorResponse{
+		APIResponse: APIResponse{
+			StatusCode: http.StatusUnprocessableEntity,
+			Message:    errors,
+		},
+	}
 }
 
-func (h *ApiHandler) Static(w http.ResponseWriter, r *http.Request) {
-	h.fsProtection("static").ServeHTTP(w, r)
+func InvalidJSON() APIErrorResponse {
+	return NewErrorResponse(
+		http.StatusBadRequest,
+		fmt.Errorf("uncorrect JSON data"),
+	)
 }
 
-func (h *ApiHandler) Assets(w http.ResponseWriter, r *http.Request) {
-	h.fsProtection("assets").ServeHTTP(w, r)
+func InternalError() APIErrorResponse {
+	return NewErrorResponse(
+		http.StatusInternalServerError,
+		fmt.Errorf("internal server error"),
+	)
 }
 
-// =============================== API handlers ===============================
+func WriteJSON(w http.ResponseWriter, code int, v any) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
 
-// AppsMenu handlers
-
-func (h *ApiHandler) AppsList(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func (h *ApiHandler) DeleteFromAppsList(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func (h *ApiHandler) CreateInAppsList(w http.ResponseWriter, r *http.Request) {
-
+	return json.NewEncoder(w).Encode(v)
 }

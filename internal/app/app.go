@@ -1,34 +1,28 @@
 package app
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/eterline/desky-backend/internal/api"
 	"github.com/eterline/desky-backend/pkg/logger"
+	"github.com/sirupsen/logrus"
 )
 
-func NewApp() *App {
-	return &App{
-		Server: api.New(),
-		Log:    logger.ReturnEntry().Logger,
-	}
-}
+var log *logrus.Logger
 
-func (app *App) Start() {
+func Execute() {
 
-	var err error
+	log = logger.ReturnEntry().Logger
+
+	APIServer := api.NewServer()
 
 	go func() {
-		err = app.Server.Run()
+		err := APIServer.Run()
+		log.Fatalf("fatal app error: %s", err.Error())
 	}()
 
 	time.Sleep(10 * time.Minute)
-	app.Server.Stop()
+	err := APIServer.Stop()
 
-	if err == http.ErrServerClosed {
-		app.Log.Info("closing server")
-		return
-	}
-	app.Log.Fatalf("fatal app error: %s", err.Error())
+	log.Fatalf("fatal app error: %s", err.Error())
 }

@@ -12,7 +12,7 @@ clean:
 	go clean
 
 start:
-	./desky-backend
+	./desky-backend -log ./logging
 
 del:
 	rm ./desky-backend || echo "file didn't exists"
