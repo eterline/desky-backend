@@ -53,8 +53,8 @@ func SetApplicationsRouting() *chi.Mux {
 	return BuildSubroute(
 		RoutesConfig{
 			HandlerParam{"GET", "/table", as.ReturnAppsTable},
-			HandlerParam{"POST", "/{topic}", as.AppendApp},
-			HandlerParam{"DELETE", "/{topic}/{number}", as.DeleteApp},
+			HandlerParam{"POST", "/table/{topic}", as.AppendApp},
+			HandlerParam{"DELETE", "/table/{topic}/{number}", as.DeleteApp},
 		},
 	)
 }

@@ -56,7 +56,12 @@ func (ph *ProxmoxHandlerGroup) DeviceStart(w http.ResponseWriter, r *http.Reques
 		return op, err
 	}
 
-	dev, err := ph.Provider.ResolveDevice(q["session"], chi.URLParam(r, "node"), q["vmid"])
+	pveSession, err := ph.Provider.GetSession(q["session"])
+	if err != nil {
+		return op, err
+	}
+
+	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
 	if err != nil {
 		return op, err
 	}
@@ -82,7 +87,12 @@ func (ph *ProxmoxHandlerGroup) DeviceShutdown(w http.ResponseWriter, r *http.Req
 		return op, err
 	}
 
-	dev, err := ph.Provider.ResolveDevice(q["session"], chi.URLParam(r, "node"), q["vmid"])
+	pveSession, err := ph.Provider.GetSession(q["session"])
+	if err != nil {
+		return op, err
+	}
+
+	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
 	if err != nil {
 		return op, err
 	}
@@ -108,7 +118,12 @@ func (ph *ProxmoxHandlerGroup) DeviceStop(w http.ResponseWriter, r *http.Request
 		return op, err
 	}
 
-	dev, err := ph.Provider.ResolveDevice(q["session"], chi.URLParam(r, "node"), q["vmid"])
+	pveSession, err := ph.Provider.GetSession(q["session"])
+	if err != nil {
+		return op, err
+	}
+
+	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
 	if err != nil {
 		return op, err
 	}
@@ -134,7 +149,12 @@ func (ph *ProxmoxHandlerGroup) DeviceSuspend(w http.ResponseWriter, r *http.Requ
 		return op, err
 	}
 
-	dev, err := ph.Provider.ResolveDevice(q["session"], chi.URLParam(r, "node"), q["vmid"])
+	pveSession, err := ph.Provider.GetSession(q["session"])
+	if err != nil {
+		return op, err
+	}
+
+	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
 	if err != nil {
 		return op, err
 	}
@@ -160,7 +180,12 @@ func (ph *ProxmoxHandlerGroup) DeviceResume(w http.ResponseWriter, r *http.Reque
 		return op, err
 	}
 
-	dev, err := ph.Provider.ResolveDevice(q["session"], chi.URLParam(r, "node"), q["vmid"])
+	pveSession, err := ph.Provider.GetSession(q["session"])
+	if err != nil {
+		return op, err
+	}
+
+	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
 	if err != nil {
 		return op, err
 	}

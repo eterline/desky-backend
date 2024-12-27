@@ -41,7 +41,7 @@ func (np *NodeProvider) GetNodes(ctx context.Context) (lst *NodeList, err error)
 	return lst, err
 }
 
-func (np *NodeProvider) Node(name string) (node *ProxmoxNode, err error) {
+func (np *NodeProvider) NodeInstance(name string) (node *ProxmoxNode, err error) {
 	list := &NodeList{}
 
 	if np.nodes == nil {
