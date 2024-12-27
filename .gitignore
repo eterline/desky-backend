@@ -3,3 +3,4 @@ web
 trace*
 logging/*
 !logging/.keep
+config.json
