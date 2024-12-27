@@ -5,14 +5,14 @@ build:
 
 
 run: del build
-	./desky-backend
+	./desky-backend -log logging
 
 clean:
 	go mod tidy
 	go clean
 
 start:
-	./desky-backend -log ./logging
+	./desky-backend -log logging
 
 del:
 	rm ./desky-backend || echo "file didn't exists"

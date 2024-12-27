@@ -25,11 +25,6 @@ func (mw *MiddleWare) Logging(next http.Handler) http.Handler {
 }
 
 // TODO:
-func (mw *MiddleWare) AllowCORS() {
-
-}
-
-// TODO:
-func (mw *MiddleWare) Authorization() {
+func (mw *MiddleWare) AuthorizationJWT() {
 
 }

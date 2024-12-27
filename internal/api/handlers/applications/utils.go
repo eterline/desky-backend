@@ -2,13 +2,20 @@ package applications
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
+	"net/http"
 	"os"
+	"strconv"
 
+	"github.com/eterline/desky-backend/internal/api/handlers"
 	"github.com/eterline/desky-backend/internal/utils"
 )
 
-func (as *AppsService) generateAppsFile() (AppsTable, error) {
+func (as *AppsHandlerGroup) generateAppsFile() (AppsTable, error) {
+	as.mutx.TryLock()
+	defer as.mutx.Unlock()
+
 	file, err := os.Create(as.filePath)
 	defer file.Close()
 
@@ -25,7 +32,7 @@ func (as *AppsService) generateAppsFile() (AppsTable, error) {
 	return ExampledtApps, err
 }
 
-func (as *AppsService) getAppTable() (table AppsTable, err error) {
+func (as *AppsHandlerGroup) getAppTable() (table AppsTable, err error) {
 	data, err := os.ReadFile(as.filePath)
 
 	if err != nil {
@@ -36,7 +43,17 @@ func (as *AppsService) getAppTable() (table AppsTable, err error) {
 	return table, err
 }
 
-func (as *AppsService) addApp(topic string, app AppDetails) error {
+func (as *AppsHandlerGroup) addApp(topic string, app AppDetails) error {
+	as.mutx.TryLock()
+	defer as.mutx.Unlock()
+
+	if topic == "" {
+		return handlers.NewErrorResponse(
+			http.StatusBadRequest,
+			errors.New("topic name can't be empty"),
+		)
+	}
+
 	file, err := os.OpenFile(as.filePath, os.O_RDWR, 0644)
 	defer file.Close()
 
@@ -77,7 +94,25 @@ func (as *AppsService) addApp(topic string, app AppDetails) error {
 	return err
 }
 
-func (as *AppsService) rmApp(topic string, appNum int) error {
+func (as *AppsHandlerGroup) rmApp(topic, appNum string) error {
+	as.mutx.TryLock()
+	defer as.mutx.Unlock()
+
+	if topic == "" {
+		return handlers.NewErrorResponse(
+			http.StatusBadRequest,
+			errors.New("topic name can't be empty"),
+		)
+	}
+
+	appQueryNumber, err := strconv.Atoi(appNum)
+	if err != nil {
+		return handlers.NewErrorResponse(
+			http.StatusBadRequest,
+			errors.New("uncorrect app query number"),
+		)
+	}
+
 	file, err := os.OpenFile(as.filePath, os.O_RDWR, 0644)
 	defer file.Close()
 	if err != nil {
@@ -95,7 +130,14 @@ func (as *AppsService) rmApp(topic string, appNum int) error {
 		return err
 	}
 
-	table[topic] = utils.RemoveSliceIndex(table[topic], appNum)
+	if (len(table[topic])) < (appQueryNumber+1) || appQueryNumber < 0 {
+		return handlers.NewErrorResponse(
+			http.StatusBadRequest,
+			errors.New("app query number out of range"),
+		)
+	}
+
+	table[topic] = utils.RemoveSliceIndex(table[topic], appQueryNumber)
 
 	if len(table[topic]) == 0 {
 		delete(table, topic)

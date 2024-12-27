@@ -2,15 +2,22 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strconv"
 
+	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/pkg/logger"
+	"github.com/go-chi/chi"
 )
 
-type ApiHandleFunc func(http.ResponseWriter, *http.Request) (op string, err error)
+func NewBasicHandlerGroup() *BasicHandlerGroup {
+	return &BasicHandlerGroup{
+		Config: configuration.GetConfig(),
+	}
+}
 
-func InitController(handle ApiHandleFunc) http.HandlerFunc {
+// Initialize custom type handler with error processing
+func InitController(handle APIHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.ReturnEntry()
 
@@ -20,15 +27,17 @@ func InitController(handle ApiHandleFunc) http.HandlerFunc {
 
 		if err != nil {
 
-			var errResponse APIErrorResponse
+			switch e := err.(type) {
 
-			if apiError, ok := err.(*APIErrorResponse); ok {
-				errResponse = *apiError
-			} else {
-				errResponse = InternalError()
+			case *APIErrorResponse:
+				WriteJSON(w, e.StatusCode, e)
+				break
+
+			default:
+				errDefault := InternalErrorResponse()
+				WriteJSON(w, errDefault.StatusCode, errDefault)
+				break
 			}
-
-			WriteJSON(w, errResponse.StatusCode, errResponse)
 
 			log.Errorf(
 				"API Error - path: %s | controller: %s | error: %s",
@@ -38,29 +47,62 @@ func InitController(handle ApiHandleFunc) http.HandlerFunc {
 	}
 }
 
-func InvalidRequestData(errors DataErrors) APIErrorResponse {
-	return APIErrorResponse{
-		APIResponse: APIResponse{
-			StatusCode: http.StatusUnprocessableEntity,
-			Message:    errors,
-		},
+func QueryURLParameters(r *http.Request, params ...string) (map[string]string, error) {
+
+	data := make(map[string]string, len(params))
+
+	for _, param := range params {
+
+		str := chi.URLParam(r, param)
+
+		if str == "" || str == " " {
+			return nil, NewErrorResponse(
+				http.StatusNotAcceptable,
+				ErrEmptyParameter(param),
+			)
+		}
+
+		data[param] = str
 	}
+
+	return data, nil
 }
 
-func InvalidJSON() APIErrorResponse {
-	return NewErrorResponse(
-		http.StatusBadRequest,
-		fmt.Errorf("uncorrect JSON data"),
-	)
+func QueryURLNumeredParameters(r *http.Request, params ...string) (map[string]int, error) {
+
+	stringPs, err := QueryURLParameters(r, params...)
+	if err != nil {
+		return nil, err
+	}
+
+	numPs := make(map[string]int, len(params))
+
+	for _, param := range params {
+
+		num, err := strconv.Atoi(stringPs[param])
+
+		if err != nil {
+			return nil, NewErrorResponse(
+				http.StatusNotAcceptable,
+				ErrInterpretationToNumber(param),
+			)
+		}
+
+		numPs[param] = num
+	}
+
+	return numPs, nil
 }
 
-func InternalError() APIErrorResponse {
-	return NewErrorResponse(
-		http.StatusInternalServerError,
-		fmt.Errorf("internal server error"),
-	)
+// Decode JSON request body to data structure
+func DecodeRequest(r *http.Request, v any) error {
+	if r.Header.Get("Content-Type") != "application/json" {
+		return InvalidContentTypeResponse()
+	}
+	return json.NewDecoder(r.Body).Decode(&v)
 }
 
+// Send JSON object response
 func WriteJSON(w http.ResponseWriter, code int, v any) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)

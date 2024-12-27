@@ -22,6 +22,7 @@ type writerHook struct {
 type LoggingConfig struct {
 	Renew bool   // If true log file will be created with starting time in name
 	Dir   string // Directory for logging file
+	Level uint
 
 	_ struct{}
 }

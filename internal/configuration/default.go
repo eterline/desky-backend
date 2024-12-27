@@ -34,6 +34,14 @@ var defaultConfig = &Configuration{
 			Key:      "NNNUEiomn39488f9945f894hfv8u4nuv034v89v3u89v508huig",
 		},
 	},
+	Proxmox: []ProxmoxCredentials{
+		{
+			SSLCheck: false,
+			ApiURL:   "http://proxmox.lan:8006",
+			Username: "root",
+			Password: "root",
+		},
+	},
 }
 
 func GenerateFile(out string) error {

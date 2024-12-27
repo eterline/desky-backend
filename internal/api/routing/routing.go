@@ -16,7 +16,7 @@ type APIRouting struct {
 
 func InitAPIRouting(ver int) *APIRouting {
 	return &APIRouting{
-		BasePath: fmt.Sprint("/api/v%w", ver),
+		BasePath: fmt.Sprintf("/api/v%d", ver),
 	}
 }
 
@@ -27,7 +27,7 @@ func (rt *APIRouting) pathWithBase(pt string) string {
 func (rt *APIRouting) ConfigRoutes() *chi.Mux {
 	router := SetBaseRouting()
 
-	router.Mount("/apps", SetApplicationsRouting())
+	router.Mount(rt.pathWithBase("/apps"), SetApplicationsRouting())
 
 	return router
 }
@@ -53,6 +53,8 @@ func SetApplicationsRouting() *chi.Mux {
 	return BuildSubroute(
 		RoutesConfig{
 			HandlerParam{"GET", "/table", as.ReturnAppsTable},
+			HandlerParam{"POST", "/{topic}", as.AppendApp},
+			HandlerParam{"DELETE", "/{topic}/{number}", as.DeleteApp},
 		},
 	)
 }

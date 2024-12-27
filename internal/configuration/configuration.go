@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert/yaml"
 )
 
@@ -36,7 +37,7 @@ func Init(path string) error {
 
 	config := new(Configuration)
 
-	switch filepath.Ext(path) {
+	switch filepath.Ext(path)[1:] {
 
 	case "json":
 		err = json.Unmarshal(data, config)
@@ -54,6 +55,8 @@ func Init(path string) error {
 		instance = defaultConfig
 		return ErrUnknownExt
 	}
+
+	err = validator.New().Struct(config)
 
 	if err != nil {
 		instance = defaultConfig

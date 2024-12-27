@@ -29,9 +29,10 @@ func (h *writerHook) Levels() []logrus.Level {
 	return h.LogLevels
 }
 
-func InitLogger(path, filename string) error {
+func InitLogger(path, filename string, level uint) error {
 	l := logrus.New()
 	l.SetReportCaller(true)
+	l.SetLevel(logrus.Level(level))
 
 	l.Formatter = &easy.Formatter{
 		TimestampFormat: "2006-01-02 15:04:05",
@@ -59,16 +60,16 @@ func InitLogger(path, filename string) error {
 	return nil
 }
 
-func InitLoggingWithConfig(config LoggingConfig) error {
+func InitWithConfig(config LoggingConfig) error {
 	logfile := "trace.log"
 
 	if config.Renew {
-		logfile = "trace." + time.Now().Format("2017.09.07 17:06:06") + ".log"
+		logfile = "trace." + time.Now().Format(time.RFC3339) + ".log"
 	}
 
-	if err := InitLogger(config.Dir, logfile); err != nil {
+	if err := InitLogger(config.Dir, logfile, config.Level); err != nil {
 
-		errDefault := InitLogger("", "trace.log")
+		errDefault := InitLogger("", "trace.log", 0)
 
 		if errDefault != nil {
 			log.Fatalf("can't start app: %s", err)
