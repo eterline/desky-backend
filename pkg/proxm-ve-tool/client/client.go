@@ -59,7 +59,7 @@ func Connect(config *SessionConfig) (*Session, error) {
 
 	cl.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: config.ssl,
+			InsecureSkipVerify: !config.ssl,
 		},
 	}
 
@@ -76,11 +76,13 @@ func Connect(config *SessionConfig) (*Session, error) {
 		return nil, err
 	}
 
-	return &Session{
+	d := &Session{
 		Config: *config,
 		cookie: data.Data.Ticket,
 		csrf:   data.Data.CSRFPreventionToken,
-	}, nil
+	}
+
+	return d, nil
 }
 
 type RequestProvide struct {
@@ -98,7 +100,7 @@ func (s *Session) MakeRequest(ctx context.Context, path string) *RequestProvide 
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: s.Config.ssl,
+			InsecureSkipVerify: !s.Config.ssl,
 		},
 	}
 

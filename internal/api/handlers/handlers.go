@@ -5,21 +5,20 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/go-chi/chi"
+	"github.com/sirupsen/logrus"
 )
 
-func NewBasicHandlerGroup() *BasicHandlerGroup {
-	return &BasicHandlerGroup{
-		Config: configuration.GetConfig(),
-	}
-}
+var log *logrus.Logger = nil
 
 // Initialize custom type handler with error processing
 func InitController(handle APIHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.ReturnEntry()
+
+		if log == nil {
+			log = logger.ReturnEntry().Logger
+		}
 
 		op, err := handle(w, r)
 

@@ -24,7 +24,6 @@ func NewVirt(vmid int, s *client.Session, t string, parent string) *VirtMachine 
 }
 
 func (v *VirtMachine) urlWithBase(path string) string {
-	fmt.Println(fmt.Sprintf("/nodes/%s/%s/%v%s", v.parentNode, v.devType, v.VMID, path))
 	return fmt.Sprintf("/nodes/%s/%s/%v%s", v.parentNode, v.devType, v.VMID, path)
 }
 

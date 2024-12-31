@@ -17,33 +17,72 @@ type ProxmoxHandlerGroup struct {
 	Provider *ve.ProxmoxProvider
 }
 
-func Init() (*ProxmoxHandlerGroup, error) {
+func Init() *ProxmoxHandlerGroup {
 	log = logger.ReturnEntry().Logger
 
 	provider, err := ve.NewProvide()
 	if err != nil {
-		return nil, err
+		log.Errorf("proxmox provider initialization error: %s", err.Error())
 	}
+	log.Infof("%v pve sessions connected with %v errors", provider.AvailSessions(), provider.ErrCount)
 
 	return &ProxmoxHandlerGroup{
 		Provider: provider,
-	}, nil
-}
-
-func (ph *ProxmoxHandlerGroup) NodeList(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handlers.proxmox.node-list"
-
-	return op, err
+	}
 }
 
 func (ph *ProxmoxHandlerGroup) NodeStatus(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.node-status"
+
+	q, err := handlers.QueryURLNumeredParameters(r, "session")
+	if err != nil {
+		return op, err
+	}
+
+	qStr, err := handlers.QueryURLParameters(r, "node")
+	if err != nil {
+		return op, err
+	}
+
+	pveSession, err := ph.Provider.GetSession(q["session"])
+	if err != nil {
+		return op, err
+	}
+
+	status, err := pveSession.NodeStatus(context.Background(), qStr["node"])
+	if err != nil {
+		return op, err
+	}
+
+	err = handlers.WriteJSON(w, http.StatusOK, status)
 
 	return op, err
 }
 
 func (ph *ProxmoxHandlerGroup) DeviceList(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.device-list"
+
+	q, err := handlers.QueryURLNumeredParameters(r, "session")
+	if err != nil {
+		return op, err
+	}
+
+	qStr, err := handlers.QueryURLParameters(r, "node")
+	if err != nil {
+		return op, err
+	}
+
+	pveSession, err := ph.Provider.GetSession(q["session"])
+	if err != nil {
+		return op, err
+	}
+
+	devices, err := pveSession.DeviceList(context.Background(), qStr["node"])
+	if err != nil {
+		return op, err
+	}
+
+	err = handlers.WriteJSON(w, http.StatusOK, devices)
 
 	return op, err
 }
@@ -76,6 +115,8 @@ func (ph *ProxmoxHandlerGroup) DeviceStart(w http.ResponseWriter, r *http.Reques
 		)
 	}
 
+	handlers.StatusOK(w, "operation successfully")
+
 	return op, nil
 }
 
@@ -106,6 +147,8 @@ func (ph *ProxmoxHandlerGroup) DeviceShutdown(w http.ResponseWriter, r *http.Req
 			ErrActionCannotComplete(q["vmid"]),
 		)
 	}
+
+	handlers.StatusOK(w, "operation successfully")
 
 	return op, nil
 }
@@ -138,6 +181,8 @@ func (ph *ProxmoxHandlerGroup) DeviceStop(w http.ResponseWriter, r *http.Request
 		)
 	}
 
+	handlers.StatusOK(w, "operation successfully")
+
 	return op, nil
 }
 
@@ -169,6 +214,8 @@ func (ph *ProxmoxHandlerGroup) DeviceSuspend(w http.ResponseWriter, r *http.Requ
 		)
 	}
 
+	handlers.StatusOK(w, "operation successfully")
+
 	return op, nil
 }
 
@@ -199,6 +246,8 @@ func (ph *ProxmoxHandlerGroup) DeviceResume(w http.ResponseWriter, r *http.Reque
 			ErrActionCannotComplete(q["vmid"]),
 		)
 	}
+
+	handlers.StatusOK(w, "operation successfully")
 
 	return op, nil
 }

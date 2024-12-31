@@ -5,6 +5,7 @@ import "time"
 var instance *CacheProvider
 
 type (
+	// Implements Global value cache for web-server
 	CacheProvider struct {
 		Cache ProvideMap
 	}

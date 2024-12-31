@@ -6,7 +6,9 @@ import (
 	"github.com/eterline/desky-backend/internal/api/handlers"
 	"github.com/eterline/desky-backend/internal/api/handlers/applications"
 	"github.com/eterline/desky-backend/internal/api/handlers/frontend"
-	"github.com/eterline/desky-backend/internal/api/middlewares"
+	"github.com/eterline/desky-backend/internal/api/handlers/proxmox"
+	"github.com/eterline/desky-backend/internal/api/handlers/sys"
+	mws "github.com/eterline/desky-backend/internal/api/middlewares"
 	"github.com/go-chi/chi"
 )
 
@@ -25,16 +27,18 @@ func (rt *APIRouting) pathWithBase(pt string) string {
 }
 
 func (rt *APIRouting) ConfigRoutes() *chi.Mux {
-	router := SetBaseRouting()
+	router := setBaseRouting()
 
-	router.Mount(rt.pathWithBase("/apps"), SetApplicationsRouting())
+	router.Mount(rt.pathWithBase("/apps"), setApplicationsRouting())
+	router.Mount(rt.pathWithBase("/pve"), setProxmoxRouting())
+	router.Mount(rt.pathWithBase("/system"), setSystemRouting())
 
 	return router
 }
 
-func SetBaseRouting() *chi.Mux {
+func setBaseRouting() *chi.Mux {
 	chi := chi.NewMux()
-	mw := middlewares.Init()
+	mw := mws.Init()
 
 	chi.Use(mw.Logging)
 
@@ -47,7 +51,7 @@ func SetBaseRouting() *chi.Mux {
 	return chi
 }
 
-func SetApplicationsRouting() *chi.Mux {
+func setApplicationsRouting() *chi.Mux {
 	as := applications.Init("apps.json")
 
 	return BuildSubroute(
@@ -55,6 +59,38 @@ func SetApplicationsRouting() *chi.Mux {
 			HandlerParam{"GET", "/table", as.ReturnAppsTable},
 			HandlerParam{"POST", "/table/{topic}", as.AppendApp},
 			HandlerParam{"DELETE", "/table/{topic}/{number}", as.DeleteApp},
+		},
+	)
+}
+
+func setProxmoxRouting() *chi.Mux {
+	pve := proxmox.Init()
+
+	return BuildSubroute(
+		RoutesConfig{
+			HandlerParam{"GET", "/{session}/{node}/status", pve.NodeStatus},
+
+			HandlerParam{"GET", "/{session}/{node}/devices", pve.DeviceList},
+
+			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/start", pve.DeviceStart},
+			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/shutdown", pve.DeviceShutdown},
+			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/stop", pve.DeviceStop},
+			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/suspend", pve.DeviceSuspend},
+			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/resume", pve.DeviceResume},
+		},
+	)
+}
+
+func setSystemRouting() *chi.Mux {
+	sys := sys.Init()
+
+	return BuildSubroute(
+		RoutesConfig{
+			HandlerParam{"GET", "/info", sys.HostInfo},
+			HandlerParam{"GET", "/stats", sys.HostStatsWS},
+			HandlerParam{"GET", "/tty", sys.TtyWS},
+
+			HandlerParam{"GET", "/systemd/status", sys.SystemdUnits},
 		},
 	)
 }

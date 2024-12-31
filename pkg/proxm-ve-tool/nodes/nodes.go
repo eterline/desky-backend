@@ -9,13 +9,11 @@ import (
 
 type NodeProvider struct {
 	session *client.Session
-	nodes   *NodeList
 }
 
 func NewNodeProvider(session *client.Session) *NodeProvider {
 	return &NodeProvider{
 		session: session,
-		nodes:   nil,
 	}
 }
 
@@ -35,19 +33,14 @@ func (np *NodeProvider) GetNodes(ctx context.Context) (lst *NodeList, err error)
 	}
 
 	err = req.Resolve(&lst)
-	if err == nil {
-		np.nodes = lst
-	}
 	return lst, err
 }
 
 func (np *NodeProvider) NodeInstance(name string) (node *ProxmoxNode, err error) {
 	list := &NodeList{}
 
-	if np.nodes == nil {
-		if list, err = np.GetNodes(context.Background()); err != nil {
-			return nil, err
-		}
+	if list, err = np.GetNodes(context.Background()); err != nil {
+		return nil, err
 	}
 
 	if !utils.ContainsInListOfStruct(list.Data, name) {

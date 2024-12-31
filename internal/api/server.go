@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/eterline/desky-backend/internal/api/cache"
 	"github.com/eterline/desky-backend/internal/api/routing"
 	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/sirupsen/logrus"
 )

@@ -3,15 +3,11 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-
-	"github.com/eterline/desky-backend/internal/configuration"
 )
 
 type APIHandlerFunc func(http.ResponseWriter, *http.Request) (op string, err error)
 
-type BasicHandlerGroup struct {
-	Config *configuration.Configuration
-}
+type BasicHandlerGroup struct{}
 
 type APIResponse struct {
 	StatusCode int `json:"code"`

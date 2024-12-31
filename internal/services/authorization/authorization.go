@@ -6,6 +6,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const JWTExpirationTime time.Duration = time.Hour * 12
+
+// Implements JWT authentication for web-server
 type JWTauthProvider struct {
 	SecretKey      []byte
 	ExpirationTime time.Duration
@@ -13,17 +16,14 @@ type JWTauthProvider struct {
 	_ struct{}
 }
 
-func InitJWT(secret, expirationTime string) *JWTauthProvider {
+func ConvertSecret(v string) []byte {
+	return []byte(v)
+}
 
-	timeParsed, err := time.ParseDuration(expirationTime)
-
-	if err != nil {
-		timeParsed = time.Hour * 12
-	}
-
+func NewJWTauthProvider(secret []byte) *JWTauthProvider {
 	return &JWTauthProvider{
-		SecretKey:      []byte(secret),
-		ExpirationTime: timeParsed,
+		SecretKey:      secret,
+		ExpirationTime: JWTExpirationTime,
 	}
 }
 
