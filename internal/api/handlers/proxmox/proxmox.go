@@ -22,21 +22,19 @@ type Cacher interface {
 }
 
 type ProxmoxHandlerGroup struct {
-	Provider *ve.ProxmoxProvider
+	Provider *ve.VEService
 	Cache    Cacher
 }
 
 func Init(ch Cacher) *ProxmoxHandlerGroup {
 	log = logger.ReturnEntry().Logger
 
-	provider, err := ve.NewProvide()
-	if err != nil {
-		log.Errorf("proxmox provider initialization error: %s", err.Error())
-	}
-	log.Infof("%v pve sessions connected with %v errors", provider.AvailSessions(), provider.ErrCount)
+	pve := ve.Init()
+
+	log.Infof("%v pve sessions connected with %v errors", pve.AvailSessions(), pve.ErrCount)
 
 	return &ProxmoxHandlerGroup{
-		Provider: provider,
+		Provider: pve,
 		Cache:    ch,
 	}
 }
@@ -49,6 +47,21 @@ func (ph *ProxmoxHandlerGroup) invalidSessionsHandler(w http.ResponseWriter) err
 		)
 	}
 	return nil
+}
+
+func (ph *ProxmoxHandlerGroup) Sessions(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.proxmox.sessions"
+
+	if err := ph.invalidSessionsHandler(w); err != nil {
+		return op, err
+	}
+
+	list, err := ph.Provider.SessionList()
+	if err == nil {
+		err = handlers.WriteJSON(w, http.StatusOK, list)
+	}
+
+	return op, err
 }
 
 func (ph *ProxmoxHandlerGroup) NodeStatus(w http.ResponseWriter, r *http.Request) (op string, err error) {

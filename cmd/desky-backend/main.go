@@ -34,6 +34,7 @@ False: 'trace.log'
 	logger.InitWithConfig(logConfig)
 }
 
+// TODO: sss
 func main() {
 	log := logger.ReturnEntry()
 

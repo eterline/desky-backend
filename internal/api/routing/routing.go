@@ -49,7 +49,7 @@ func (rt *APIRouting) ConfigRoutes() *chi.Mux {
 func (rt *APIRouting) setBaseRouting() *chi.Mux {
 	chi := chi.NewMux()
 
-	chi.Use(rt.MW.Logging, rt.MW.Compressor)
+	chi.Use(rt.MW.PanicRecoverer, rt.MW.Logging, rt.MW.Compressor)
 
 	front := frontend.Init()
 
@@ -79,8 +79,10 @@ func setProxmoxRouting() *chi.Mux {
 
 	return BuildSubroute(
 		RoutesConfig{
+			HandlerParam{"GET", "/sessions", pve.Sessions},
 			HandlerParam{"GET", "/{session}/{node}/status", pve.NodeStatus},
 			HandlerParam{"GET", "/{session}/{node}/devices", pve.DeviceList},
+
 			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/{command}", pve.DeviceCommand},
 		},
 	)

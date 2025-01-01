@@ -62,7 +62,6 @@ func (mw *MiddleWare) Compressor(next http.Handler) http.Handler {
 	})
 }
 
-// TODO:
 func (mw *MiddleWare) AuthorizationJWT(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 
@@ -84,6 +83,20 @@ func (mw *MiddleWare) AuthorizationJWT(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(writer, request)
+	})
+}
+
+func (mw *MiddleWare) PanicRecoverer(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+
+		next.ServeHTTP(writer, request)
+
+		if r := recover(); r != nil {
+			mw.logger.Infof("handler panic recovered: in 501 status code | description: %v", r)
+
+			e := handlers.InternalErrorResponse()
+			handlers.WriteJSON(writer, e.StatusCode, e)
+		}
 	})
 }
 

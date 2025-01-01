@@ -15,14 +15,17 @@ const (
 )
 
 // Implements Proxmox VE sessions provider for web-server
-type ProxmoxProvider struct {
+type VEService struct {
 	ErrCount     int
 	SessionStack []*nodes.NodeProvider
 }
 
-func NewProvide() (*ProxmoxProvider, error) {
+func Init() *VEService {
 	config := configuration.GetConfig().Proxmox
-	Provider := &ProxmoxProvider{}
+	Provider := &VEService{
+		ErrCount:     0,
+		SessionStack: []*nodes.NodeProvider{},
+	}
 
 	for _, confInstance := range config {
 		cfg := proxmox.InitSession(
@@ -44,18 +47,14 @@ func NewProvide() (*ProxmoxProvider, error) {
 		Provider.ErrCount++
 	}
 
-	if len(Provider.SessionStack) == 0 {
-		return nil, ErrNoValidSessions
-	}
-
-	return Provider, nil
+	return Provider
 }
 
-func (pp *ProxmoxProvider) AnyValidConns() bool {
+func (pp *VEService) AnyValidConns() bool {
 	return len(pp.SessionStack) > 0
 }
 
-func (pp *ProxmoxProvider) AvailSessions() int {
+func (pp *VEService) AvailSessions() int {
 	return len(pp.SessionStack)
 }
 
@@ -63,8 +62,36 @@ type ProvideInstance struct {
 	*nodes.NodeProvider
 }
 
+func (pp *VEService) SessionList() (sessions *SessionsList, err error) {
+
+	if !pp.AnyValidConns() {
+		return nil, ErrNoValidSessions
+	}
+
+	ss := make(SessionsList, pp.AvailSessions())
+	ctx := context.Background()
+
+	for i, s := range pp.SessionStack {
+
+		lst, err := s.GetNodes(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		buf := make([]string, len(lst.Data))
+
+		for i, node := range lst.Data {
+			buf[i] = node.Node
+		}
+
+		ss[i] = buf
+	}
+
+	return &ss, nil
+}
+
 // returns session by ID from Session Stack
-func (pp *ProxmoxProvider) GetSession(sessionID int) (instance *ProvideInstance, err error) {
+func (pp *VEService) GetSession(sessionID int) (instance *ProvideInstance, err error) {
 
 	if !pp.AnyValidConns() {
 		return nil, ErrNoValidSessions

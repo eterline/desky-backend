@@ -12,19 +12,16 @@ import (
 )
 
 var (
-	log *logrus.Logger
+	log *logrus.Logger = nil
 )
 
 func NewServer() *Server {
-	log = logger.ReturnEntry().Logger
-
 	config := configuration.GetConfig().Server
 	routing := routing.InitAPIRouting(1)
-
 	cache.Init()
 
 	server := &Server{
-		HttpServer: http.Server{
+		HttpServer: &http.Server{
 			Addr:    config.Address(),
 			Handler: routing.ConfigRoutes(),
 		},
@@ -34,25 +31,23 @@ func NewServer() *Server {
 }
 
 func (srv *Server) Run() error {
+	log = logger.ReturnEntry().Logger
+
 	conf := configuration.GetConfig()
-	server := srv.HttpServer
 
 	log.Infof("required auth status: %v", conf.Auth.Enabled)
-
 	log.Infof("starting server at: %s", conf.Server.Address())
+	log.Infof("app page at: %s", conf.Server.PageAddr())
 
-	return func() error {
-		if !conf.Server.TLS.Enabled {
-			return server.ListenAndServe()
+	return func(c configuration.ServerTLSConfig, s *http.Server) error {
+
+		if c.Enabled {
+			log.Infof("tls enabled. key file: %s cert file %s", c.Key, c.Certificate)
+			return s.ListenAndServeTLS(c.Certificate, c.Key)
 		}
+		return s.ListenAndServe()
 
-		log.Infof("tls enabled. key file: %s cert file %s", conf.Server.TLS.Key, conf.Server.TLS.Certificate)
-
-		return server.ListenAndServeTLS(
-			conf.Server.TLS.Certificate,
-			conf.Server.TLS.Key,
-		)
-	}()
+	}(conf.Server.TLS, srv.HttpServer)
 }
 
 func (srv *Server) Stop() error {

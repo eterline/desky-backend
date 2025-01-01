@@ -17,22 +17,25 @@ func Execute() {
 
 	log = logger.ReturnEntry().Logger
 
+	log.Info("prepare server to start")
 	APIServer := api.NewServer()
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	process, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	go func() {
 		err := APIServer.Run()
-		log.Fatalf("fatal app error: %s", err.Error())
+		log.Errorf("fatal app error: %s", err.Error())
+
+		stop()
 	}()
 
-	<-ctx.Done()
+	<-process.Done()
 
 	log.Info("stopping the server...")
 
 	if err := APIServer.Stop(); err != nil {
-		log.Fatalf("fatal app error: %s", err.Error())
+		log.Errorf("stopping app error: %s", err.Error())
 	}
 
 	log.Info("app shutdown. Bye...")

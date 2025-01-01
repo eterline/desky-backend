@@ -5,7 +5,7 @@ import (
 )
 
 type Server struct {
-	HttpServer http.Server
+	HttpServer *http.Server
 
 	_ struct{}
 }

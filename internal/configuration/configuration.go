@@ -3,6 +3,7 @@ package configuration
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -76,6 +77,29 @@ func (cfg *ServerConfig) Address() string {
 
 func (cfg *ServerConfig) JWTSecretBytes() []byte {
 	return []byte(cfg.JWTSecret)
+}
+
+func (cfg *ServerConfig) PageAddr() string {
+
+	u := url.URL{
+
+		Scheme: func(v bool) string {
+			if v {
+				return "https"
+			}
+			return "http"
+		}(cfg.TLS.Enabled),
+
+		Host: cfg.Connection.Hostname + func(port uint16) string {
+			if port == 80 || port == 443 {
+				return ""
+			}
+			return fmt.Sprintf(":%v", port)
+		}(cfg.Connection.Port),
+		Path: "/",
+	}
+
+	return u.String()
 }
 
 // Logger config function =============================
