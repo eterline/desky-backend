@@ -1,28 +1,31 @@
 .PHONY: build run
 
+app = desky-backend
+test-app = desky-backend-test
+
 build:
-	go build -v ./cmd/desky-backend/...
+	go build -v ./cmd/$(app)/...
 
 
 run: del build
-	./desky-backend -log logging
+	./$(app) -log logging
 
 clean:
 	go mod tidy
 	go clean
 
 start:
-	./desky-backend -log logging
+	./$(app) -log logging
 
 del:
-	rm ./desky-backend* || echo "file didn't exists"
+	rm ./$(app)* || echo "file didn't exists"
 	rm ./trace*         || echo "file didn't exists"
 
 
 build-test:
-	go build -v ./cmd/desky-backend-test/...
+	go build -v ./cmd/$(app-test)/...
 
 test: build-test
-	./desky-backend-test
+	./$(app-test)
 
 .DEFAULT_GOAL := run
