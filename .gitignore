@@ -2,7 +2,8 @@ desky-backend
 !cmd/desky-backend
 
 web
+config.json
+
 trace*
 logging/*
 !logging/.keep
-config.json
