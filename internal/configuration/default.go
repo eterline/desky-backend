@@ -6,8 +6,20 @@ import (
 )
 
 var defaultConfig = &Configuration{
+
 	DevMode: false,
+
+	Auth: AuthParameters{
+		Enabled:  true,
+		Bcrypt:   false,
+		Username: "admin",
+		Password: "admin",
+	},
+
 	Server: ServerConfig{
+
+		JWTSecret: "QO8hzZPlWeNYTg0UeO7wVaddySdUwo6HYSPQbemjxRiCCVj6",
+
 		TLS: ServerTLSConfig{
 			Enabled:     false,
 			Key:         "",
@@ -19,6 +31,7 @@ var defaultConfig = &Configuration{
 			Port:     3000,
 		},
 	},
+
 	Services: map[string]ServiceParams{
 		"default-service-0": ServiceParams{
 			IsActive: true,
@@ -34,6 +47,7 @@ var defaultConfig = &Configuration{
 			Key:      "NNNUEiomn39488f9945f894hfv8u4nuv034v89v3u89v508huig",
 		},
 	},
+
 	Proxmox: []ProxmoxCredentials{
 		{
 			SSLCheck: false,

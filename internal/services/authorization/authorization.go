@@ -1,55 +1,41 @@
 package authorization
 
 import (
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/eterline/desky-backend/internal/configuration"
 )
 
-const JWTExpirationTime time.Duration = time.Hour * 12
-
-// Implements JWT authentication for web-server
-type JWTauthProvider struct {
-	SecretKey      []byte
-	ExpirationTime time.Duration
-
-	_ struct{}
+type AuthForm interface {
+	GetPassword() string
+	GetUsername() string
 }
 
-func ConvertSecret(v string) []byte {
-	return []byte(v)
+type Payload interface {
+	JSONSting() (string, error)
 }
 
-func NewJWTauthProvider(secret []byte) *JWTauthProvider {
-	return &JWTauthProvider{
-		SecretKey:      secret,
-		ExpirationTime: JWTExpirationTime,
+func InitAuth(config *configuration.Configuration) *AuthService {
+	return &AuthService{
+		JWT: NewJWTauth(config.Server.JWTSecretBytes()),
 	}
 }
 
-func (pd *JWTauthProvider) CreateSignedToken(credentials string) (string, error) {
+// TODO:
+// func (form LoginForm) IsValid() bool {
+// 	return false
+// }
 
-	token := jwt.NewWithClaims(
-		jwt.SigningMethodHS512,
-		jwt.MapClaims{
-			"credentials": credentials,
-			"expiration":  pd.ExpirationTime,
-		},
-	)
+// auth mocked
+func (a *AuthService) IsValid(form AuthForm) bool {
+	auth := configuration.GetConfig().Auth
 
-	return token.SignedString(pd.SecretKey)
+	return form.GetPassword() == auth.Password && form.GetUsername() == auth.Username
 }
 
-func (pd *JWTauthProvider) TokenIsValid(tokenString string) bool {
-
-	var getSecretToken = func(tokenString *jwt.Token) (interface{}, error) {
-		return pd.SecretKey, nil
-	}
-
-	token, err := jwt.Parse(tokenString, getSecretToken)
+func (a *AuthService) Token(form Payload) (string, error) {
+	out, err := form.JSONSting()
 	if err != nil {
-		return false
+		return "", err
 	}
 
-	return token.Valid
+	return a.JWT.CreateSignedToken(out)
 }

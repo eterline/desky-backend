@@ -74,4 +74,8 @@ func (cfg *ServerConfig) Address() string {
 	return fmt.Sprintf("%s:%v", cfg.Connection.Addr, cfg.Connection.Port)
 }
 
+func (cfg *ServerConfig) JWTSecretBytes() []byte {
+	return []byte(cfg.JWTSecret)
+}
+
 // Logger config function =============================

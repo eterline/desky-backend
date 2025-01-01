@@ -1,6 +1,8 @@
 package handlers
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var (
 	ErrInterpretationToNumber = func(param string) error {

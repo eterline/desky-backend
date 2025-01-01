@@ -3,21 +3,30 @@ package proxmox
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/eterline/desky-backend/internal/api/handlers"
 	"github.com/eterline/desky-backend/internal/services/ve"
 	"github.com/eterline/desky-backend/pkg/logger"
+	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/virtual"
 	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
 )
 
 var log *logrus.Logger
 
-type ProxmoxHandlerGroup struct {
-	Provider *ve.ProxmoxProvider
+type Cacher interface {
+	GetValue(key any) any
+	PushValue(key, value any)
+	OlderThanAndExists(key any, duration time.Duration) bool
 }
 
-func Init() *ProxmoxHandlerGroup {
+type ProxmoxHandlerGroup struct {
+	Provider *ve.ProxmoxProvider
+	Cache    Cacher
+}
+
+func Init(ch Cacher) *ProxmoxHandlerGroup {
 	log = logger.ReturnEntry().Logger
 
 	provider, err := ve.NewProvide()
@@ -28,11 +37,26 @@ func Init() *ProxmoxHandlerGroup {
 
 	return &ProxmoxHandlerGroup{
 		Provider: provider,
+		Cache:    ch,
 	}
+}
+
+func (ph *ProxmoxHandlerGroup) invalidSessionsHandler(w http.ResponseWriter) error {
+	if !ph.Provider.AnyValidConns() {
+		return handlers.NewErrorResponse(
+			http.StatusLocked,
+			ErrNoSessions,
+		)
+	}
+	return nil
 }
 
 func (ph *ProxmoxHandlerGroup) NodeStatus(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.node-status"
+
+	if err := ph.invalidSessionsHandler(w); err != nil {
+		return op, err
+	}
 
 	q, err := handlers.QueryURLNumeredParameters(r, "session")
 	if err != nil {
@@ -62,6 +86,10 @@ func (ph *ProxmoxHandlerGroup) NodeStatus(w http.ResponseWriter, r *http.Request
 func (ph *ProxmoxHandlerGroup) DeviceList(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.device-list"
 
+	if err := ph.invalidSessionsHandler(w); err != nil {
+		return op, err
+	}
+
 	q, err := handlers.QueryURLNumeredParameters(r, "session")
 	if err != nil {
 		return op, err
@@ -87,8 +115,17 @@ func (ph *ProxmoxHandlerGroup) DeviceList(w http.ResponseWriter, r *http.Request
 	return op, err
 }
 
-func (ph *ProxmoxHandlerGroup) DeviceStart(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handlers.proxmox.device-start"
+func (ph *ProxmoxHandlerGroup) DeviceCommand(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.proxmox.device-command"
+
+	if err := ph.invalidSessionsHandler(w); err != nil {
+		return op, err
+	}
+
+	qStr, err := handlers.QueryURLParameters(r, "command")
+	if err != nil {
+		return op, err
+	}
 
 	q, err := handlers.QueryURLNumeredParameters(r, "session", "vmid")
 	if err != nil {
@@ -105,149 +142,57 @@ func (ph *ProxmoxHandlerGroup) DeviceStart(w http.ResponseWriter, r *http.Reques
 		return op, err
 	}
 
-	if err = dev.Start(context.Background()); err != nil {
+	err, found := execDeviceCommand(dev, qStr["command"], context.Background())
 
+	if err != nil {
 		log.Errorf("proxmox error: %s", err.Error())
 
-		return op, handlers.NewErrorResponse(
-			http.StatusNotImplemented,
-			ErrActionCannotComplete(q["vmid"]),
-		)
+		if found {
+			return op, handlers.NewErrorResponse(
+				http.StatusNotImplemented,
+				ErrActionCannotComplete(q["vmid"]),
+			)
+		} else {
+			return op, handlers.NewErrorResponse(
+				http.StatusBadRequest,
+				err,
+			)
+		}
+
 	}
 
-	handlers.StatusOK(w, "operation successfully")
-
-	return op, nil
+	return op, handlers.StatusOK(w, "operation successfully")
 }
 
-func (ph *ProxmoxHandlerGroup) DeviceShutdown(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handlers.proxmox.device-shutdown"
+func execDeviceCommand(dev *virtual.VirtMachine, command string, ctx context.Context) (err error, foundCommand bool) {
 
-	q, err := handlers.QueryURLNumeredParameters(r, "session", "vmid")
-	if err != nil {
-		return op, err
+	foundCommand = false
+
+	switch command {
+
+	case "start":
+		err = dev.Start(ctx)
+		break
+
+	case "shutdown":
+		err = dev.Shutdown(ctx)
+		break
+
+	case "stop":
+		err = dev.Stop(ctx)
+		break
+
+	case "suspend":
+		err = dev.Suspend(ctx)
+		break
+
+	case "resume":
+		err = dev.Resume(ctx)
+		break
+
+	default:
+		return ErrUnknownCommand, false
 	}
 
-	pveSession, err := ph.Provider.GetSession(q["session"])
-	if err != nil {
-		return op, err
-	}
-
-	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
-	if err != nil {
-		return op, err
-	}
-
-	if err = dev.Shutdown(context.Background()); err != nil {
-
-		log.Errorf("proxmox error: %s", err.Error())
-
-		return op, handlers.NewErrorResponse(
-			http.StatusNotImplemented,
-			ErrActionCannotComplete(q["vmid"]),
-		)
-	}
-
-	handlers.StatusOK(w, "operation successfully")
-
-	return op, nil
-}
-
-func (ph *ProxmoxHandlerGroup) DeviceStop(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handlers.proxmox.device-stop"
-
-	q, err := handlers.QueryURLNumeredParameters(r, "session", "vmid")
-	if err != nil {
-		return op, err
-	}
-
-	pveSession, err := ph.Provider.GetSession(q["session"])
-	if err != nil {
-		return op, err
-	}
-
-	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
-	if err != nil {
-		return op, err
-	}
-
-	if err = dev.Stop(context.Background()); err != nil {
-
-		log.Errorf("proxmox error: %s", err.Error())
-
-		return op, handlers.NewErrorResponse(
-			http.StatusNotImplemented,
-			ErrActionCannotComplete(q["vmid"]),
-		)
-	}
-
-	handlers.StatusOK(w, "operation successfully")
-
-	return op, nil
-}
-
-func (ph *ProxmoxHandlerGroup) DeviceSuspend(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handlers.proxmox.device-suspend"
-
-	q, err := handlers.QueryURLNumeredParameters(r, "session", "vmid")
-	if err != nil {
-		return op, err
-	}
-
-	pveSession, err := ph.Provider.GetSession(q["session"])
-	if err != nil {
-		return op, err
-	}
-
-	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
-	if err != nil {
-		return op, err
-	}
-
-	if err = dev.Suspend(context.Background()); err != nil {
-
-		log.Errorf("proxmox error: %s", err.Error())
-
-		return op, handlers.NewErrorResponse(
-			http.StatusNotImplemented,
-			ErrActionCannotComplete(q["vmid"]),
-		)
-	}
-
-	handlers.StatusOK(w, "operation successfully")
-
-	return op, nil
-}
-
-func (ph *ProxmoxHandlerGroup) DeviceResume(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handlers.proxmox.device-resume"
-
-	q, err := handlers.QueryURLNumeredParameters(r, "session", "vmid")
-	if err != nil {
-		return op, err
-	}
-
-	pveSession, err := ph.Provider.GetSession(q["session"])
-	if err != nil {
-		return op, err
-	}
-
-	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
-	if err != nil {
-		return op, err
-	}
-
-	if err = dev.Resume(context.Background()); err != nil {
-
-		log.Errorf("proxmox error: %s", err.Error())
-
-		return op, handlers.NewErrorResponse(
-			http.StatusNotImplemented,
-			ErrActionCannotComplete(q["vmid"]),
-		)
-	}
-
-	handlers.StatusOK(w, "operation successfully")
-
-	return op, nil
+	return err, true
 }

@@ -89,3 +89,10 @@ func ForbiddenRequestResponse() *APIErrorResponse {
 		fmt.Errorf("forbidden request"),
 	)
 }
+
+func NotFoundPageResponse() *APIErrorResponse {
+	return NewErrorResponse(
+		http.StatusNotFound,
+		fmt.Errorf("route controller not found"),
+	)
+}

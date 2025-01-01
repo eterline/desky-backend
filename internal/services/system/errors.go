@@ -1,6 +1,7 @@
 package system
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -157,3 +158,7 @@ func NewExitErrorCode(code int) *ExitErrorCode {
 func (e *ExitErrorCode) Error() string {
 	return fmt.Sprintf("system service execution error: %s", e.Description)
 }
+
+var (
+	ErrUnitNotFound = errors.New("systemd unit not found")
+)

@@ -21,7 +21,7 @@ func NewServer() *Server {
 	config := configuration.GetConfig().Server
 	routing := routing.InitAPIRouting(1)
 
-	cache.InitCache()
+	cache.Init()
 
 	server := &Server{
 		HttpServer: http.Server{
@@ -34,21 +34,23 @@ func NewServer() *Server {
 }
 
 func (srv *Server) Run() error {
-	conf := configuration.GetConfig().Server
+	conf := configuration.GetConfig()
 	server := srv.HttpServer
 
-	log.Infof("starting server at: %s.", conf.Address())
+	log.Infof("required auth status: %v", conf.Auth.Enabled)
+
+	log.Infof("starting server at: %s", conf.Server.Address())
 
 	return func() error {
-		if !conf.TLS.Enabled {
+		if !conf.Server.TLS.Enabled {
 			return server.ListenAndServe()
 		}
 
-		log.Infof("tls enabled. key file: %s cert file %s", conf.TLS.Key, conf.TLS.Certificate)
+		log.Infof("tls enabled. key file: %s cert file %s", conf.Server.TLS.Key, conf.Server.TLS.Certificate)
 
 		return server.ListenAndServeTLS(
-			conf.TLS.Certificate,
-			conf.TLS.Key,
+			conf.Server.TLS.Certificate,
+			conf.Server.TLS.Key,
 		)
 	}()
 }

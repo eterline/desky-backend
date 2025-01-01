@@ -6,9 +6,19 @@ type Configuration struct {
 	Server   ServerConfig   `json:"Server" yaml:"Server" validate:"required"`
 	Services ServiceMap     `json:"Services" yaml:"Services" validate:"required"`
 	Proxmox  ProxmoxService `json:"Proxmox" yaml:"Proxmox" validate:"required"`
-	// Storage
+	Auth     AuthParameters `json:"Authorization" yaml:"Authorization" validate:"required"`
 
 	_ struct{}
+}
+
+// Authorization config field =============================
+
+type AuthParameters struct {
+	Enabled bool `json:"active" yaml:"active" validate:"boolean"`
+	Bcrypt  bool `json:"bcrypt" yaml:"bcrypt" validate:"boolean"`
+
+	Username string `json:"username" yaml:"username" validate:"required_if=Enabled true"`
+	Password string `json:"password" yaml:"password" validate:"required_if=Enabled true"`
 }
 
 // Server config field =============================
@@ -16,6 +26,7 @@ type Configuration struct {
 type (
 	// Server configrurations
 	ServerConfig struct {
+		JWTSecret  string                 `json:"JWT-Secret" yaml:"JWT-Secret" validate:"required"`
 		TLS        ServerTLSConfig        `json:"SSL-Mode" yaml:"SSL-Mode"`
 		Connection ServerConnectionConfig `json:"Connection" yaml:"Connection" validate:"required"`
 
@@ -49,7 +60,7 @@ type (
 	// That can be used with APIkey-like using or typical credentials
 	ServiceParams struct {
 		IsActive bool   `json:"active" yaml:"active" validate:"boolean"`
-		ApiURL   string `json:"api-url" yaml:"api-url" validate:"required, url"`
+		ApiURL   string `json:"api-url" yaml:"api-url" validate:"required,url"`
 		UseKeys  bool   `json:"use-api-key" yaml:"use-api-key" validate:"boolean"`
 		Key      string `json:"secret" yaml:"secret" validate:"required_if=UseKeys true"`
 		Username string `json:"login" yaml:"login" validate:"required_if=UseKeys false"`
@@ -66,7 +77,7 @@ type (
 
 	ProxmoxCredentials struct {
 		SSLCheck bool   `json:"ssl-check" yaml:"ssl-check" validate:"boolean"`
-		ApiURL   string `json:"api-url" yaml:"api-url" validate:"required, url"`
+		ApiURL   string `json:"api-url" yaml:"api-url" validate:"required,url"`
 		Username string `json:"login" yaml:"login"`
 		Password string `json:"password" yaml:"password"`
 

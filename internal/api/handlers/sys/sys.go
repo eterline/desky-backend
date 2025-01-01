@@ -7,7 +7,6 @@ import (
 
 	"github.com/eterline/desky-backend/internal/api/handlers"
 	"github.com/eterline/desky-backend/internal/services/system"
-	"github.com/eterline/desky-backend/internal/utils"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -19,16 +18,32 @@ const (
 	WS_Message_delay = 5
 )
 
-type SysHandlerGroup struct {
-	Sys *system.HostInfoService
-	WS  websocket.Upgrader
+type HostService interface {
+	HostInfo() *system.HostInfo
+	RAMInfo() *system.RAMInfo
+	CPUInfo() *system.CPUInfo
+	Temperatures() []system.SensorInfo
+	Load() *system.AverageLoad
 }
 
-func Init() *SysHandlerGroup {
+type Cacher interface {
+	GetValue(key any) any
+	PushValue(key, value any)
+	OlderThanAndExists(key any, duration time.Duration) bool
+}
+
+type SysHandlerGroup struct {
+	Sys   HostService
+	WS    websocket.Upgrader
+	Cache Cacher
+}
+
+func Init(hs HostService, ch Cacher) *SysHandlerGroup {
 	log = logger.ReturnEntry().Logger
 
 	return &SysHandlerGroup{
-		Sys: system.NewHostInfoService(),
+		Sys:   hs,
+		Cache: ch,
 
 		WS: websocket.Upgrader{
 			HandshakeTimeout:  10 * time.Second,
@@ -41,37 +56,6 @@ func (s *SysHandlerGroup) HostInfo(w http.ResponseWriter, r *http.Request) (op s
 	op = "handlers.sys.host-info"
 
 	return op, handlers.WriteJSON(w, http.StatusOK, s.Sys.HostInfo())
-}
-
-func (s *SysHandlerGroup) SystemdUnits(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handlers.sys.host-info"
-
-	r.ParseForm()
-
-	pageNumber, _ := strconv.Atoi(r.FormValue("page"))
-	perPage, _ := strconv.Atoi(r.FormValue("count"))
-
-	list, err := system.UnitsList()
-	if err != nil {
-		return op, err
-	}
-
-	w.Header().Add("All-Count", strconv.Itoa(len(list)))
-
-	if pageNumber != 0 && perPage != 0 {
-
-		cuted := utils.CutList(list, pageNumber*perPage, pageNumber*perPage+perPage)
-
-		list = []system.SystemdUnit{}
-
-		for _, d := range cuted {
-			if d.UnitFile != "" {
-				list = append(list, d)
-			}
-		}
-	}
-
-	return op, handlers.WriteJSON(w, http.StatusOK, list)
 }
 
 func (s *SysHandlerGroup) HostStatsWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
@@ -96,6 +80,7 @@ func (s *SysHandlerGroup) HostStatsWS(w http.ResponseWriter, r *http.Request) (o
 			RAM:  s.Sys.RAMInfo(),
 			CPU:  s.Sys.CPUInfo(),
 			Temp: s.Sys.Temperatures(),
+			Load: s.Sys.Load(),
 		}
 	}
 
@@ -157,4 +142,107 @@ func (s *SysHandlerGroup) TtyWS(w http.ResponseWriter, r *http.Request) (op stri
 
 		connection.WriteJSON(resp)
 	}
+}
+
+func (s *SysHandlerGroup) SystemdUnits(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.sys.host-info"
+
+	r.ParseForm()
+	pageNumber, _ := strconv.Atoi(r.FormValue("page"))
+	perPage, _ := strconv.Atoi(r.FormValue("count"))
+
+	if data := s.Cache.GetValue(op); data != nil && !s.Cache.OlderThanAndExists(op, time.Second*30) {
+
+		list := data.([]system.SystemdUnit)
+
+		paginatedList := paginateSystemdUnits(list, pageNumber, perPage)
+		w.Header().Add("All-Count", strconv.Itoa(len(list)))
+
+		return op, handlers.WriteJSON(w, http.StatusOK, paginatedList)
+	}
+
+	list, err := system.UnitsList()
+	if err != nil {
+		return op, err
+	}
+
+	s.Cache.PushValue(op, list)
+
+	paginatedList := paginateSystemdUnits(list, pageNumber, perPage)
+	w.Header().Add("All-Count", strconv.Itoa(len(list)))
+
+	return op, handlers.WriteJSON(w, http.StatusOK, paginatedList)
+}
+
+func paginateSystemdUnits(list []system.SystemdUnit, pageNumber, perPage int) []system.SystemdUnit {
+	if pageNumber == 0 || perPage == 0 {
+		return list
+	}
+
+	start := pageNumber * perPage
+	end := start + perPage
+	if start >= len(list) {
+		return []system.SystemdUnit{}
+	}
+	if end > len(list) {
+		end = len(list)
+	}
+
+	cuted := list[start:end]
+	filtered := []system.SystemdUnit{}
+	for _, d := range cuted {
+		if d.UnitFile != "" {
+			filtered = append(filtered, d)
+		}
+	}
+	return filtered
+}
+
+func (s *SysHandlerGroup) UnitCommand(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.sys.unit-command"
+
+	qStr, err := handlers.QueryURLParameters(r, "unit", "command")
+	if err != nil {
+		return op, err
+	}
+
+	unit, err := system.UnitInstance(qStr["unit"])
+	if err != nil {
+
+		if err == system.ErrUnitNotFound {
+			return op, handlers.NewErrorResponse(
+				http.StatusBadRequest,
+				err,
+			)
+		}
+
+		return op, err
+	}
+
+	switch qStr["command"] {
+
+	case "stop":
+		err = unit.Stop()
+		break
+
+	case "start":
+		err = unit.Start()
+		break
+
+	case "restart":
+		err = unit.Restart()
+		break
+
+	default:
+		return op, handlers.NewErrorResponse(
+			http.StatusBadRequest,
+			ErrUnknownUnitCommand,
+		)
+	}
+
+	if err == nil {
+		err = handlers.StatusOK(w, "command successfully completed")
+	}
+
+	return op, err
 }

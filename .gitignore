@@ -1,4 +1,6 @@
 desky-backend
+!cmd/desky-backend
+
 web
 trace*
 logging/*

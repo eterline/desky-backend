@@ -33,38 +33,6 @@ func ExecOut(pipe *script.Pipe) (out []byte, err error) {
 	return out, nil
 }
 
-func UnitsList() ([]SystemdUnit, error) {
-	data := []SystemdUnit{}
-
-	pipe := JqOutputCmd("systemctl list-unit-files --type=service -o json", "")
-
-	out, err := ExecOut(pipe)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := json.Unmarshal(out, &data); err != nil {
-		return nil, ErrExec(err)
-	}
-
-	return data, nil
-}
-
-func UnitStart(service string) error {
-	_, err := ExecOut(script.Exec("systemctl start " + service))
-	return err
-}
-
-func UnitStop(service string) error {
-	_, err := ExecOut(script.Exec("systemctl stop " + service))
-	return err
-}
-
-func UnitRestart(service string) error {
-	_, err := ExecOut(script.Exec("systemctl restart " + service))
-	return err
-}
-
 func Uptime() UptimeDuration {
 
 	out, err := io.ReadAll(script.Exec("uptime -p"))

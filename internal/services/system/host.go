@@ -2,8 +2,10 @@ package system
 
 import (
 	"context"
+	"time"
 
 	cpuPs "github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/load"
 	"github.com/shirou/gopsutil/v4/sensors"
 
 	hostPs "github.com/shirou/gopsutil/v4/host"
@@ -13,7 +15,6 @@ import (
 type HostInfoService struct {
 	ctx       context.Context
 	CancelCtx context.CancelFunc
-	exLinux   *sensors.ExLinux
 }
 
 func NewHostInfoService() *HostInfoService {
@@ -24,7 +25,6 @@ func NewHostInfoService() *HostInfoService {
 	return &HostInfoService{
 		ctx:       ctx,
 		CancelCtx: cancel,
-		exLinux:   sensors.NewExLinux(),
 	}
 }
 
@@ -38,7 +38,7 @@ func (hs *HostInfoService) RAMInfo() (ram *RAMInfo) {
 			Total:      stat.Total,
 			Used:       stat.Used,
 			Avail:      stat.Available,
-			UsePercent: uint8(stat.UsedPercent),
+			UsePercent: stat.UsedPercent,
 		}
 	}
 
@@ -76,9 +76,12 @@ func (hs *HostInfoService) CPUInfo() (cpu *CPUInfo) {
 	stats, err := cpuPs.InfoWithContext(hs.ctx)
 	if err == nil {
 
+		load, _ := cpuPs.PercentWithContext(hs.ctx, 1*time.Second, false)
+
 		cpu.Name = stats[0].ModelName
 		cpu.Model = stats[0].Model
 		cpu.Cache = stats[0].CacheSize
+		cpu.Load = load[0]
 
 		var found bool
 
@@ -127,4 +130,20 @@ func (hs *HostInfoService) Temperatures() (data []SensorInfo) {
 	}
 
 	return data
+}
+
+func (hs *HostInfoService) Load() (avg *AverageLoad) {
+
+	avg = &AverageLoad{}
+
+	res, err := load.AvgWithContext(hs.ctx)
+	if err == nil {
+		avg = &AverageLoad{
+			Load1:  res.Load1,
+			Load5:  res.Load5,
+			Load15: res.Load15,
+		}
+	}
+
+	return avg
 }

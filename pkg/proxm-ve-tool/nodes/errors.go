@@ -2,12 +2,20 @@ package nodes
 
 import "fmt"
 
+type NodesErr struct {
+	string
+}
+
+func (e *NodesErr) Error() string {
+	return e.string
+}
+
 var (
 	ErrNodeNotExists = func(name string) error {
-		return fmt.Errorf("node '%s' does not exists", name)
+		return &NodesErr{fmt.Sprintf("node '%s' does not exists", name)}
 	}
 
 	ErrBadStatusCode = func(code int) error {
-		return fmt.Errorf("bad response status code: %v", code)
+		return &NodesErr{fmt.Sprintf("bad response status code: %v", code)}
 	}
 )

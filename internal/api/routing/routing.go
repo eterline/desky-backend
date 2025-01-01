@@ -9,16 +9,20 @@ import (
 	"github.com/eterline/desky-backend/internal/api/handlers/proxmox"
 	"github.com/eterline/desky-backend/internal/api/handlers/sys"
 	mws "github.com/eterline/desky-backend/internal/api/middlewares"
+	"github.com/eterline/desky-backend/internal/services/cache"
+	"github.com/eterline/desky-backend/internal/services/system"
 	"github.com/go-chi/chi"
 )
 
 type APIRouting struct {
 	BasePath string
+	MW       *mws.MiddleWare
 }
 
 func InitAPIRouting(ver int) *APIRouting {
 	return &APIRouting{
 		BasePath: fmt.Sprintf("/api/v%d", ver),
+		MW:       mws.Init(),
 	}
 }
 
@@ -27,22 +31,29 @@ func (rt *APIRouting) pathWithBase(pt string) string {
 }
 
 func (rt *APIRouting) ConfigRoutes() *chi.Mux {
-	router := setBaseRouting()
 
-	router.Mount(rt.pathWithBase("/apps"), setApplicationsRouting())
-	router.Mount(rt.pathWithBase("/pve"), setProxmoxRouting())
-	router.Mount(rt.pathWithBase("/system"), setSystemRouting())
+	router := rt.setBaseRouting()
+	protectedRoute := chi.NewRouter()
+
+	protectedRoute.Use(rt.MW.AuthorizationJWT)
+
+	protectedRoute.Mount("/apps", setApplicationsRouting())
+	protectedRoute.Mount("/pve", setProxmoxRouting())
+	protectedRoute.Mount("/system", setSystemRouting())
+
+	router.Mount(rt.BasePath, protectedRoute)
 
 	return router
 }
 
-func setBaseRouting() *chi.Mux {
+func (rt *APIRouting) setBaseRouting() *chi.Mux {
 	chi := chi.NewMux()
-	mw := mws.Init()
 
-	chi.Use(mw.Logging)
+	chi.Use(rt.MW.Logging, rt.MW.Compressor)
 
 	front := frontend.Init()
+
+	chi.Post("/login", handlers.InitController(front.Login))
 
 	chi.Get("/", handlers.InitController(front.HTML))
 	chi.Get("/assets/*", handlers.InitController(front.Assets))
@@ -64,33 +75,29 @@ func setApplicationsRouting() *chi.Mux {
 }
 
 func setProxmoxRouting() *chi.Mux {
-	pve := proxmox.Init()
+	pve := proxmox.Init(cache.GetEntry())
 
 	return BuildSubroute(
 		RoutesConfig{
 			HandlerParam{"GET", "/{session}/{node}/status", pve.NodeStatus},
-
 			HandlerParam{"GET", "/{session}/{node}/devices", pve.DeviceList},
-
-			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/start", pve.DeviceStart},
-			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/shutdown", pve.DeviceShutdown},
-			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/stop", pve.DeviceStop},
-			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/suspend", pve.DeviceSuspend},
-			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/resume", pve.DeviceResume},
+			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/{command}", pve.DeviceCommand},
 		},
 	)
 }
 
 func setSystemRouting() *chi.Mux {
-	sys := sys.Init()
+	sys := sys.Init(system.NewHostInfoService(), cache.GetEntry())
 
 	return BuildSubroute(
 		RoutesConfig{
 			HandlerParam{"GET", "/info", sys.HostInfo},
-			HandlerParam{"GET", "/stats", sys.HostStatsWS},
-			HandlerParam{"GET", "/tty", sys.TtyWS},
 
 			HandlerParam{"GET", "/systemd/status", sys.SystemdUnits},
+			HandlerParam{"POST", "/systemd/{unit}/{command}", sys.UnitCommand},
+
+			HandlerParam{"GET", "/stats", sys.HostStatsWS},
+			HandlerParam{"GET", "/tty", sys.TtyWS},
 		},
 	)
 }

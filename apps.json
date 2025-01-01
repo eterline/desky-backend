@@ -1,4 +1,66 @@
 {
+   "New": [
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      },
+      {
+         "name": "example",
+         "description": "example",
+         "link": "example",
+         "icon": "uptime-kuma"
+      }
+   ],
    "OtherTools": [
       {
          "name": "Grafana",

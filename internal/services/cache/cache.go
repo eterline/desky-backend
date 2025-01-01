@@ -2,11 +2,11 @@ package cache
 
 import "time"
 
-var instance *CacheProvider
+var instance *CacheService
 
 type (
 	// Implements Global value cache for web-server
-	CacheProvider struct {
+	CacheService struct {
 		Cache ProvideMap
 	}
 
@@ -20,28 +20,28 @@ type (
 	}
 )
 
-func InitCache() {
-	instance = &CacheProvider{
+func Init() {
+	instance = &CacheService{
 		Cache: ProvideMap{},
 	}
 }
 
-func GetEntry() *CacheProvider {
+func GetEntry() *CacheService {
 	return instance
 }
 
-func (cache *CacheProvider) GetValue(key any) any {
+func (cache *CacheService) GetValue(key any) any {
 	return cache.Cache[key].CachedObj
 }
 
-func (cache *CacheProvider) PushValue(key, value any) {
+func (cache *CacheService) PushValue(key, value any) {
 	cache.Cache[key] = CacheDataUnit{
 		CreatedAt: time.Now(),
 		CachedObj: value,
 	}
 }
 
-func (cache *CacheProvider) OlderThanAndExists(key any, duration time.Duration) bool {
+func (cache *CacheService) OlderThanAndExists(key any, duration time.Duration) bool {
 	val, exists := cache.Cache[key]
-	return (time.Since(val.CreatedAt) > duration) && !exists
+	return (time.Since(val.CreatedAt) > duration) && exists
 }
