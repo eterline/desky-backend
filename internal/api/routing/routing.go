@@ -61,6 +61,8 @@ func (rt *APIRouting) setBaseRouting() *chi.Mux {
 	chi.Post("/login", handlers.InitController(front.Login))
 
 	chi.Get("/", handlers.InitController(front.HTML))
+	chi.Get("/welcome", handlers.InitController(front.HTML))
+
 	chi.Get("/assets/*", handlers.InitController(front.Assets))
 	chi.Get("/static/*", handlers.InitController(front.Static))
 	chi.Get("/wallpaper/*", handlers.InitController(front.WallpaperHandle))
