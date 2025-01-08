@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"github.com/eterline/desky-backend/internal/configuration"
-	proxmox "github.com/eterline/desky-backend/pkg/proxm-ve-tool/client"
+	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/client"
 	nodes "github.com/eterline/desky-backend/pkg/proxm-ve-tool/nodes"
 	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/virtual"
 )
@@ -28,7 +28,7 @@ func Init() *VEService {
 	}
 
 	for _, confInstance := range config {
-		cfg := proxmox.InitSession(
+		cfg := client.InitSession(
 			confInstance.Username,
 			confInstance.Password,
 			confInstance.ApiURL,
@@ -36,7 +36,7 @@ func Init() *VEService {
 			confInstance.SSLCheck,
 		)
 
-		ss, err := proxmox.Connect(cfg)
+		ss, err := client.Connect(cfg)
 		if err == nil {
 			Provider.SessionStack = append(
 				Provider.SessionStack,
@@ -62,32 +62,28 @@ type ProvideInstance struct {
 	*nodes.NodeProvider
 }
 
-func (pp *VEService) SessionList() (sessions *SessionsList, err error) {
+type SessionNodes []nodes.NodeUnit
+
+func (pp *VEService) SessionList() (sessions []SessionNodes, err error) {
+
+	sessions = []SessionNodes{}
+	ctx := context.Background()
 
 	if !pp.AnyValidConns() {
 		return nil, ErrNoValidSessions
 	}
 
-	ss := make(SessionsList, pp.AvailSessions())
-	ctx := context.Background()
-
-	for i, s := range pp.SessionStack {
+	for _, s := range pp.SessionStack {
 
 		lst, err := s.GetNodes(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		buf := make([]string, len(lst.Data))
-
-		for i, node := range lst.Data {
-			buf[i] = node.Node
-		}
-
-		ss[i] = buf
+		sessions = append(sessions, lst.Data)
 	}
 
-	return &ss, nil
+	return sessions, nil
 }
 
 // returns session by ID from Session Stack

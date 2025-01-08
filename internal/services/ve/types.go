@@ -1,12 +1,6 @@
 package ve
 
 type (
-	SessionsList []HostnameList
-
-	HostnameList []string
-)
-
-type (
 	PVENodeStatus struct {
 		Name    string      `json:"name"`
 		AVGLoad AVGLoadData `json:"load"`

@@ -25,6 +25,7 @@ func NewServer() *Server {
 			Addr:    config.Address(),
 			Handler: routing.ConfigRoutes(),
 		},
+		Config: config,
 	}
 
 	return server
@@ -32,22 +33,20 @@ func NewServer() *Server {
 
 func (srv *Server) Run() error {
 	log = logger.ReturnEntry().Logger
+	conf := srv.Config
 
-	conf := configuration.GetConfig()
+	log.Infof("starting server at: %s", conf.Address())
+	log.Infof("app page at: %s", conf.PageAddr())
 
-	log.Infof("required auth status: %v", conf.Auth.Enabled)
-	log.Infof("starting server at: %s", conf.Server.Address())
-	log.Infof("app page at: %s", conf.Server.PageAddr())
+	return func(tls configuration.ServerTLSConfig, srv *http.Server) error {
 
-	return func(c configuration.ServerTLSConfig, s *http.Server) error {
-
-		if c.Enabled {
-			log.Infof("tls enabled. key file: %s cert file %s", c.Key, c.Certificate)
-			return s.ListenAndServeTLS(c.Certificate, c.Key)
+		if tls.Enabled {
+			log.Infof("tls enabled. key file: %s cert file %s", tls.Key, tls.Certificate)
+			return srv.ListenAndServeTLS(tls.Certificate, tls.Key)
 		}
-		return s.ListenAndServe()
+		return srv.ListenAndServe()
 
-	}(conf.Server.TLS, srv.HttpServer)
+	}(conf.TLS, srv.HttpServer)
 }
 
 func (srv *Server) Stop() error {

@@ -9,6 +9,8 @@ import (
 	"github.com/eterline/desky-backend/internal/api/handlers/proxmox"
 	"github.com/eterline/desky-backend/internal/api/handlers/sys"
 	mws "github.com/eterline/desky-backend/internal/api/middlewares"
+	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/services/authorization"
 	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/eterline/desky-backend/internal/services/system"
 	"github.com/go-chi/chi"
@@ -37,6 +39,9 @@ func (rt *APIRouting) ConfigRoutes() *chi.Mux {
 
 	protectedRoute.Use(rt.MW.AuthorizationJWT)
 
+	// controller for auth status checking
+	protectedRoute.Get("/check", handlers.InitController(frontend.AccessCheck))
+
 	protectedRoute.Mount("/apps", setApplicationsRouting())
 	protectedRoute.Mount("/pve", setProxmoxRouting())
 	protectedRoute.Mount("/system", setSystemRouting())
@@ -51,13 +56,14 @@ func (rt *APIRouting) setBaseRouting() *chi.Mux {
 
 	chi.Use(rt.MW.PanicRecoverer, rt.MW.Logging, rt.MW.Compressor)
 
-	front := frontend.Init()
+	front := frontend.Init(authorization.InitAuth(configuration.GetConfig()))
 
 	chi.Post("/login", handlers.InitController(front.Login))
 
 	chi.Get("/", handlers.InitController(front.HTML))
 	chi.Get("/assets/*", handlers.InitController(front.Assets))
 	chi.Get("/static/*", handlers.InitController(front.Static))
+	chi.Get("/wallpaper/*", handlers.InitController(front.WallpaperHandle))
 
 	return chi
 }
@@ -82,6 +88,9 @@ func setProxmoxRouting() *chi.Mux {
 			HandlerParam{"GET", "/sessions", pve.Sessions},
 			HandlerParam{"GET", "/{session}/{node}/status", pve.NodeStatus},
 			HandlerParam{"GET", "/{session}/{node}/devices", pve.DeviceList},
+
+			HandlerParam{"GET", "/{session}/{node}/apt/updates", pve.AptUpdates},
+			HandlerParam{"POST", "/{session}/{node}/apt/update", pve.AptUpdate},
 
 			HandlerParam{"POST", "/{session}/{node}/devices/{vmid}/{command}", pve.DeviceCommand},
 		},

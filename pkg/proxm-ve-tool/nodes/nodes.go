@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/client"
-	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/utils"
+	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/utilities"
 )
 
 type NodeProvider struct {
@@ -28,10 +28,6 @@ func (np *NodeProvider) GetNodes(ctx context.Context) (lst *NodeList, err error)
 		return nil, err
 	}
 
-	if 200 > lst.Code || lst.Code > 299 {
-		return nil, ErrBadStatusCode(lst.Code)
-	}
-
 	err = req.Resolve(&lst)
 	return lst, err
 }
@@ -43,7 +39,7 @@ func (np *NodeProvider) NodeInstance(name string) (node *ProxmoxNode, err error)
 		return nil, err
 	}
 
-	if !utils.ContainsInListOfStruct(list.Data, name) {
+	if !utilities.ContainsInListOfStruct(list.Data, name) {
 		return nil, ErrNodeNotExists(name)
 	}
 

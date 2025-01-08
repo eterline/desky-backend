@@ -7,12 +7,6 @@ import (
 	"github.com/bitfield/script"
 )
 
-type SystemdUnit struct {
-	UnitFile string `json:"unit_file"`
-	Status   string `json:"state"`
-	Preset   string `json:"preset"`
-}
-
 func UnitsList() ([]SystemdUnit, error) {
 	data := []SystemdUnit{}
 

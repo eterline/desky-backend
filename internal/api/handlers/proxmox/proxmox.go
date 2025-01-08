@@ -8,12 +8,7 @@ import (
 	"github.com/eterline/desky-backend/internal/api/handlers"
 	"github.com/eterline/desky-backend/internal/services/ve"
 	"github.com/eterline/desky-backend/pkg/logger"
-	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/virtual"
-	"github.com/go-chi/chi"
-	"github.com/sirupsen/logrus"
 )
-
-var log *logrus.Logger
 
 type Cacher interface {
 	GetValue(key any) any
@@ -27,11 +22,9 @@ type ProxmoxHandlerGroup struct {
 }
 
 func Init(ch Cacher) *ProxmoxHandlerGroup {
-	log = logger.ReturnEntry().Logger
-
 	pve := ve.Init()
 
-	log.Infof("%v pve sessions connected with %v errors", pve.AvailSessions(), pve.ErrCount)
+	logger.ReturnEntry().Infof("%v pve sessions connected with %v errors", pve.AvailSessions(), pve.ErrCount)
 
 	return &ProxmoxHandlerGroup{
 		Provider: pve,
@@ -71,22 +64,17 @@ func (ph *ProxmoxHandlerGroup) NodeStatus(w http.ResponseWriter, r *http.Request
 		return op, err
 	}
 
-	q, err := handlers.QueryURLNumeredParameters(r, "session")
+	q, err := handlers.ParseURLParameters(r, handlers.NumOpts("session"), handlers.StrOpts("node"))
 	if err != nil {
 		return op, err
 	}
 
-	qStr, err := handlers.QueryURLParameters(r, "node")
+	pveSession, err := ph.Provider.GetSession(q.GetInt("session"))
 	if err != nil {
 		return op, err
 	}
 
-	pveSession, err := ph.Provider.GetSession(q["session"])
-	if err != nil {
-		return op, err
-	}
-
-	status, err := pveSession.NodeStatus(context.Background(), qStr["node"])
+	status, err := pveSession.NodeStatus(context.Background(), q.GetStr("node"))
 	if err != nil {
 		return op, err
 	}
@@ -103,22 +91,17 @@ func (ph *ProxmoxHandlerGroup) DeviceList(w http.ResponseWriter, r *http.Request
 		return op, err
 	}
 
-	q, err := handlers.QueryURLNumeredParameters(r, "session")
+	q, err := handlers.ParseURLParameters(r, handlers.NumOpts("session"), handlers.StrOpts("node"))
 	if err != nil {
 		return op, err
 	}
 
-	qStr, err := handlers.QueryURLParameters(r, "node")
+	pveSession, err := ph.Provider.GetSession(q.GetInt("session"))
 	if err != nil {
 		return op, err
 	}
 
-	pveSession, err := ph.Provider.GetSession(q["session"])
-	if err != nil {
-		return op, err
-	}
-
-	devices, err := pveSession.DeviceList(context.Background(), qStr["node"])
+	devices, err := pveSession.DeviceList(context.Background(), q.GetStr("node"))
 	if err != nil {
 		return op, err
 	}
@@ -135,35 +118,32 @@ func (ph *ProxmoxHandlerGroup) DeviceCommand(w http.ResponseWriter, r *http.Requ
 		return op, err
 	}
 
-	qStr, err := handlers.QueryURLParameters(r, "command")
+	q, err := handlers.ParseURLParameters(r,
+		handlers.NumOpts("session", "vmid"),
+		handlers.StrOpts("command", "node"),
+	)
 	if err != nil {
 		return op, err
 	}
 
-	q, err := handlers.QueryURLNumeredParameters(r, "session", "vmid")
+	pveSession, err := ph.Provider.GetSession(q.GetInt("session"))
 	if err != nil {
 		return op, err
 	}
 
-	pveSession, err := ph.Provider.GetSession(q["session"])
+	dev, err := pveSession.ResolveDevice(q.GetStr("node"), q.GetInt("vmid"))
 	if err != nil {
 		return op, err
 	}
 
-	dev, err := pveSession.ResolveDevice(chi.URLParam(r, "node"), q["vmid"])
-	if err != nil {
-		return op, err
-	}
-
-	err, found := execDeviceCommand(dev, qStr["command"], context.Background())
+	err, found := execDeviceCommand(dev, q.GetStr("command"), context.Background())
 
 	if err != nil {
-		log.Errorf("proxmox error: %s", err.Error())
 
 		if found {
 			return op, handlers.NewErrorResponse(
 				http.StatusNotImplemented,
-				ErrActionCannotComplete(q["vmid"]),
+				ErrActionCannotComplete(q.GetInt("vmid")),
 			)
 		} else {
 			return op, handlers.NewErrorResponse(
@@ -177,35 +157,65 @@ func (ph *ProxmoxHandlerGroup) DeviceCommand(w http.ResponseWriter, r *http.Requ
 	return op, handlers.StatusOK(w, "operation successfully")
 }
 
-func execDeviceCommand(dev *virtual.VirtMachine, command string, ctx context.Context) (err error, foundCommand bool) {
+func (ph *ProxmoxHandlerGroup) AptUpdates(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.proxmox.apt-updates"
 
-	foundCommand = false
+	ctx := context.Background()
 
-	switch command {
-
-	case "start":
-		err = dev.Start(ctx)
-		break
-
-	case "shutdown":
-		err = dev.Shutdown(ctx)
-		break
-
-	case "stop":
-		err = dev.Stop(ctx)
-		break
-
-	case "suspend":
-		err = dev.Suspend(ctx)
-		break
-
-	case "resume":
-		err = dev.Resume(ctx)
-		break
-
-	default:
-		return ErrUnknownCommand, false
+	if err := ph.invalidSessionsHandler(w); err != nil {
+		return op, err
 	}
 
-	return err, true
+	q, err := handlers.ParseURLParameters(r, handlers.NumOpts("session"), handlers.StrOpts("node"))
+	if err != nil {
+		return op, err
+	}
+
+	pveSession, err := ph.Provider.GetSession(q.GetInt("session"))
+	if err != nil {
+		return op, err
+	}
+
+	node, err := pveSession.ResolveNode(q.GetStr("node"))
+	if err != nil {
+		return op, err
+	}
+
+	u, err := node.GetAptUpdates(ctx)
+	if err != nil {
+		return op, err
+	}
+
+	return op, handlers.WriteJSON(w, http.StatusOK, u.Data)
+}
+
+func (ph *ProxmoxHandlerGroup) AptUpdate(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.proxmox.apt-updates"
+
+	ctx := context.Background()
+
+	if err := ph.invalidSessionsHandler(w); err != nil {
+		return op, err
+	}
+
+	q, err := handlers.ParseURLParameters(r, handlers.NumOpts("session"), handlers.StrOpts("node"))
+	if err != nil {
+		return op, err
+	}
+
+	pveSession, err := ph.Provider.GetSession(q.GetInt("session"))
+	if err != nil {
+		return op, err
+	}
+
+	node, err := pveSession.ResolveNode(q.GetStr("node"))
+	if err != nil {
+		return op, err
+	}
+
+	if _, err := node.AptUpgrade(ctx); err != nil {
+		return op, err
+	}
+
+	return op, handlers.StatusOK(w, "update task successfully")
 }

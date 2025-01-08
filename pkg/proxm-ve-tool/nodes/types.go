@@ -196,3 +196,97 @@ type (
 		Maxmem    int64   `json:"maxmem"`
 	}
 )
+
+type (
+	AptVersions struct {
+		Data []AptVersionUnit `json:"data"`
+		Code int
+	}
+
+	AptVersionUnit struct {
+		Priority       string `json:"Priority"`
+		Version        string `json:"Version"`
+		Arch           string `json:"Arch"`
+		Description    string `json:"Description"`
+		CurrentState   string `json:"CurrentState"`
+		OldVersion     string `json:"OldVersion"`
+		ManagerVersion string `json:"ManagerVersion"`
+		Origin         string `json:"Origin"`
+		Title          string `json:"Title"`
+		Section        string `json:"Section"`
+		Package        string `json:"Package"`
+	}
+)
+
+type (
+	AptUpdates struct {
+		Data []AptUpdateUnit `json:"data"`
+		Code int
+	}
+
+	AptUpdateUnit struct {
+		Description string `json:"Description,omitempty"`
+		Origin      string `json:"Origin,omitempty"`
+		OldVersion  string `json:"OldVersion,omitempty"`
+		Version     string `json:"Version,omitempty"`
+		Section     string `json:"Section,omitempty"`
+		Priority    string `json:"Priority,omitempty"`
+		Arch        string `json:"Arch,omitempty"`
+		Package     string `json:"Package,omitempty"`
+		Title       string `json:"Title,omitempty"`
+	}
+)
+
+type (
+	AptUpgrade struct {
+		Data []string `json:"data"`
+		Code int
+	}
+)
+
+type (
+	DisksInfo struct {
+		Data []DiskUnit `json:"data"`
+		Code int
+	}
+
+	DiskUnit struct {
+		Wwn       string `json:"wwn"`
+		Used      string `json:"used"`
+		Devpath   string `json:"devpath"`
+		Osdid     int    `json:"osdid"`
+		Model     string `json:"model"`
+		OsdidList any    `json:"osdid-list"`
+		Serial    string `json:"serial"`
+		Type      string `json:"type"`
+		Vendor    string `json:"vendor"`
+		ByIDLink  string `json:"by_id_link"`
+		Size      int64  `json:"size"`
+		Rpm       int    `json:"rpm"`
+		Wearout   int    `json:"wearout"`
+		Health    string `json:"health"`
+		Gpt       int    `json:"gpt"`
+		pn        *ProxmoxNode
+	}
+
+	DiskSmartData struct {
+		Data DiskSmart `json:"data"`
+		Code int
+	}
+
+	DiskSmart struct {
+		Text    string `json:"text"`
+		Wearout int    `json:"wearout"`
+		Type    string `json:"type"`
+		Health  string `json:"health"`
+	}
+
+	Smart struct {
+		Info    SmartInfo `json:"info"`
+		Wearout int       `json:"wearout"`
+		Type    string    `json:"type"`
+		Health  string    `json:"health"`
+	}
+
+	SmartInfo map[string]string
+)

@@ -48,10 +48,6 @@ func (v *VirtMachine) Status(ctx context.Context) (status interface{}, err error
 		return nil, err
 	}
 
-	if 200 > code || code > 299 {
-		return nil, ErrBadStatusCode(code)
-	}
-
 	switch v.devType {
 	case VirtTypeLXC:
 		status = &LXCStatus{Code: code}
@@ -72,13 +68,9 @@ func (v *VirtMachine) Start(ctx context.Context) error {
 	req := v.session.MakeRequest(ctx, v.urlWithBase("/status/start"))
 	defer req.EndTask()
 
-	code, err := req.POST()
+	_, err := req.POST()
 	if err != nil {
 		return err
-	}
-
-	if code != 200 {
-		return ErrDidNotImplemented(v.VMID, code)
 	}
 
 	return nil
@@ -88,13 +80,9 @@ func (v *VirtMachine) Shutdown(ctx context.Context) error {
 	req := v.session.MakeRequest(ctx, v.urlWithBase("/status/shutdown"))
 	defer req.EndTask()
 
-	code, err := req.POST()
+	_, err := req.POST()
 	if err != nil {
 		return err
-	}
-
-	if code != 200 {
-		return ErrDidNotImplemented(v.VMID, code)
 	}
 
 	return nil
@@ -104,13 +92,9 @@ func (v *VirtMachine) Stop(ctx context.Context) error {
 	req := v.session.MakeRequest(ctx, v.urlWithBase("/status/stop"))
 	defer req.EndTask()
 
-	code, err := req.POST()
+	_, err := req.POST()
 	if err != nil {
 		return err
-	}
-
-	if code != 200 {
-		return ErrDidNotImplemented(v.VMID, code)
 	}
 
 	return nil
@@ -124,13 +108,9 @@ func (v *VirtMachine) Suspend(ctx context.Context) error {
 	req := v.session.MakeRequest(ctx, v.urlWithBase("/status/suspend"))
 	defer req.EndTask()
 
-	code, err := req.POST()
+	_, err := req.POST()
 	if err != nil {
 		return err
-	}
-
-	if code != 200 {
-		return ErrDidNotImplemented(v.VMID, code)
 	}
 
 	return nil
@@ -144,13 +124,9 @@ func (v *VirtMachine) Resume(ctx context.Context) error {
 	req := v.session.MakeRequest(ctx, v.urlWithBase("/status/resume"))
 	defer req.EndTask()
 
-	code, err := req.POST()
+	_, err := req.POST()
 	if err != nil {
 		return err
-	}
-
-	if code != 200 {
-		return ErrDidNotImplemented(v.VMID, code)
 	}
 
 	return nil

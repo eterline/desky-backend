@@ -1,5 +1,11 @@
 package system
 
+type SystemdUnit struct {
+	UnitFile string `json:"unit_file"`
+	Status   string `json:"state"`
+	Preset   string `json:"preset"`
+}
+
 type (
 	HostInfo struct {
 		Name         string         `json:"hostname"`

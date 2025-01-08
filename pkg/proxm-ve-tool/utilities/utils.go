@@ -1,4 +1,4 @@
-package utils
+package utilities
 
 import (
 	"reflect"
@@ -28,4 +28,24 @@ func ContainsInListOfStruct[Type any](obj []Type, value any) bool {
 		}
 	}
 	return false
+}
+
+func StrToInt(text string) int {
+
+	number := 0
+	textRunes := []rune(text)
+
+	for _, i := range textRunes {
+		if i < 58 && i > 47 {
+
+			if number >= 0 {
+				number = number * 10
+			}
+
+			number = number + (int(i) - 48)
+
+		}
+	}
+
+	return number
 }

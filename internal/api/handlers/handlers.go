@@ -3,10 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/eterline/desky-backend/pkg/logger"
-	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,53 +42,6 @@ func InitController(handle APIHandlerFunc) http.HandlerFunc {
 			)
 		}
 	}
-}
-
-func QueryURLParameters(r *http.Request, params ...string) (map[string]string, error) {
-
-	data := make(map[string]string, len(params))
-
-	for _, param := range params {
-
-		str := chi.URLParam(r, param)
-
-		if str == "" || str == " " {
-			return nil, NewErrorResponse(
-				http.StatusNotAcceptable,
-				ErrEmptyParameter(param),
-			)
-		}
-
-		data[param] = str
-	}
-
-	return data, nil
-}
-
-func QueryURLNumeredParameters(r *http.Request, params ...string) (map[string]int, error) {
-
-	stringPs, err := QueryURLParameters(r, params...)
-	if err != nil {
-		return nil, err
-	}
-
-	numPs := make(map[string]int, len(params))
-
-	for _, param := range params {
-
-		num, err := strconv.Atoi(stringPs[param])
-
-		if err != nil {
-			return nil, NewErrorResponse(
-				http.StatusNotAcceptable,
-				ErrInterpretationToNumber(param),
-			)
-		}
-
-		numPs[param] = num
-	}
-
-	return numPs, nil
 }
 
 // Decode JSON request body to data structure

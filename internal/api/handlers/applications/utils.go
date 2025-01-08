@@ -13,7 +13,7 @@ import (
 )
 
 func (as *AppsHandlerGroup) generateAppsFile() (AppsTable, error) {
-	as.mutx.TryLock()
+	as.mutx.Lock()
 	defer as.mutx.Unlock()
 
 	file, err := os.Create(as.filePath)
@@ -44,7 +44,7 @@ func (as *AppsHandlerGroup) getAppTable() (table AppsTable, err error) {
 }
 
 func (as *AppsHandlerGroup) addApp(topic string, app AppDetails) error {
-	as.mutx.TryLock()
+	as.mutx.Lock()
 	defer as.mutx.Unlock()
 
 	if topic == "" {
@@ -95,7 +95,7 @@ func (as *AppsHandlerGroup) addApp(topic string, app AppDetails) error {
 }
 
 func (as *AppsHandlerGroup) rmApp(topic, appNum string) error {
-	as.mutx.TryLock()
+	as.mutx.Lock()
 	defer as.mutx.Unlock()
 
 	if topic == "" {

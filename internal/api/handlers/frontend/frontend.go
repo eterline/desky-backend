@@ -5,7 +5,6 @@ import (
 
 	"github.com/eterline/desky-backend/internal/api/handlers"
 	"github.com/eterline/desky-backend/internal/api/handlers/files"
-	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/services/authorization"
 )
 
@@ -15,16 +14,18 @@ type Authorization interface {
 }
 
 type FrontendHandlerGroup struct {
-	FS       *files.FilesHandlerGroup
-	HTMLfile string
-	Auth     Authorization
+	FS, Storage *files.FilesHandlerGroup
+	HTMLfile    string
+	Auth        Authorization
 }
 
-func Init() *FrontendHandlerGroup {
+func Init(service Authorization) *FrontendHandlerGroup {
 	return &FrontendHandlerGroup{
-		FS:       files.Init("./web"),
+		Auth:     service,
 		HTMLfile: "index.html",
-		Auth:     authorization.InitAuth(configuration.GetConfig()),
+
+		FS:      files.Init("./web"),
+		Storage: files.Init("./storage"),
 	}
 }
 
@@ -49,6 +50,13 @@ func (fh *FrontendHandlerGroup) Assets(w http.ResponseWriter, r *http.Request) (
 	return op, err
 }
 
+func (fh *FrontendHandlerGroup) WallpaperHandle(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.frontend.storage"
+
+	fh.Storage.ServeDir("wallpaper").ServeHTTP(w, r)
+	return op, err
+}
+
 func (fh *FrontendHandlerGroup) Login(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.frontend.login"
 
@@ -70,4 +78,10 @@ func (fh *FrontendHandlerGroup) Login(w http.ResponseWriter, r *http.Request) (o
 		http.StatusNotAcceptable,
 		ErrUncorrectCredentials,
 	)
+}
+
+func AccessCheck(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.frontend.access-check"
+
+	return op, handlers.StatusOK(w, "accepted")
 }

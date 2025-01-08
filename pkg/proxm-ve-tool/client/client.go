@@ -144,7 +144,7 @@ func (rp *RequestProvide) GET() (code int, err error) {
 		rp.response = response
 	}
 
-	return response.StatusCode, err
+	return response.StatusCode, ValidateOKCodes(response.StatusCode)
 }
 
 func (rp *RequestProvide) POST() (code int, err error) {
@@ -155,7 +155,7 @@ func (rp *RequestProvide) POST() (code int, err error) {
 		rp.response = response
 	}
 
-	return response.StatusCode, err
+	return response.StatusCode, ValidateOKCodes(response.StatusCode)
 }
 
 func (rp *RequestProvide) Resolve(v any) error {
@@ -164,11 +164,21 @@ func (rp *RequestProvide) Resolve(v any) error {
 }
 
 func (rp *RequestProvide) EndTask() error {
-	rp.Client.CloseIdleConnections()
-	return rp.response.Body.Close()
+	if rp != nil {
+		rp.Client.CloseIdleConnections()
+		return rp.response.Body.Close()
+	}
+	return ErrNilConnection
 }
 
 func (rp *RequestProvide) BodyString() string {
 	data, _ := io.ReadAll(rp.response.Body)
 	return string(data)
+}
+
+func ValidateOKCodes(code int) error {
+	if 200 > code || code > 299 {
+		return ErrBadStatusCode(code)
+	}
+	return nil
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/client"
-	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/utils"
+	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/utilities"
 	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/virtual"
 )
 
@@ -40,7 +40,7 @@ func (pn *ProxmoxNode) Status(ctx context.Context) (status *NodeStatus, err erro
 	}
 
 	if 200 > status.Code || status.Code > 299 {
-		return nil, ErrBadStatusCode(status.Code)
+		return nil, client.ErrBadStatusCode(status.Code)
 	}
 
 	if err := req.Resolve(&status); err != nil {
@@ -61,7 +61,7 @@ func (pn *ProxmoxNode) HostsFile(ctx context.Context) (hosts *HostsFile, err err
 	}
 
 	if 200 > hosts.Code || hosts.Code > 299 {
-		return nil, ErrBadStatusCode(hosts.Code)
+		return nil, client.ErrBadStatusCode(hosts.Code)
 	}
 
 	if err := req.Resolve(&hosts); err != nil {
@@ -82,7 +82,7 @@ func (pn *ProxmoxNode) DNSInfo(ctx context.Context) (dns *DNS, err error) {
 	}
 
 	if 200 > dns.Code || dns.Code > 299 {
-		return nil, ErrBadStatusCode(dns.Code)
+		return nil, client.ErrBadStatusCode(dns.Code)
 	}
 
 	if err := req.Resolve(&dns); err != nil {
@@ -103,7 +103,7 @@ func (pn *ProxmoxNode) AplInfo(ctx context.Context) (apl *AplInfo, err error) {
 	}
 
 	if 200 > apl.Code || apl.Code > 299 {
-		return nil, ErrBadStatusCode(apl.Code)
+		return nil, client.ErrBadStatusCode(apl.Code)
 	}
 
 	if err := req.Resolve(&apl); err != nil {
@@ -124,7 +124,7 @@ func (pn *ProxmoxNode) LXCList(ctx context.Context) (lxcs *LXCList, err error) {
 	}
 
 	if 200 > lxcs.Code || lxcs.Code > 299 {
-		return nil, ErrBadStatusCode(lxcs.Code)
+		return nil, client.ErrBadStatusCode(lxcs.Code)
 	}
 
 	if err := req.Resolve(&lxcs); err != nil {
@@ -145,7 +145,7 @@ func (pn *ProxmoxNode) VMList(ctx context.Context) (vms *VMList, err error) {
 	}
 
 	if 200 > vms.Code || vms.Code > 299 {
-		return nil, ErrBadStatusCode(vms.Code)
+		return nil, client.ErrBadStatusCode(vms.Code)
 	}
 
 	if err := req.Resolve(&vms); err != nil {
@@ -164,7 +164,7 @@ func (pn *ProxmoxNode) VirtMachineInstance(vmid int) (v *virtual.VirtMachine, er
 		return nil, err
 	}
 
-	if utils.ContainsInListOfStruct(lxcs.Data, vmid) {
+	if utilities.ContainsInListOfStruct(lxcs.Data, vmid) {
 		return virtual.NewVirt(
 			vmid, pn.session, virtual.VirtTypeLXC, pn.Name,
 		), nil
@@ -175,7 +175,7 @@ func (pn *ProxmoxNode) VirtMachineInstance(vmid int) (v *virtual.VirtMachine, er
 		return nil, err
 	}
 
-	if utils.ContainsInListOfStruct(vms.Data, vmid) {
+	if utilities.ContainsInListOfStruct(vms.Data, vmid) {
 		return virtual.NewVirt(
 			vmid, pn.session, virtual.VirtTypeQEMU, pn.Name,
 		), nil

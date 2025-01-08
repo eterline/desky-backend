@@ -1,6 +1,9 @@
 package cache
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 var instance *CacheService
 
@@ -8,6 +11,7 @@ type (
 	// Implements Global value cache for web-server
 	CacheService struct {
 		Cache ProvideMap
+		mu    sync.Mutex
 	}
 
 	ProvideMap map[any]CacheDataUnit
@@ -35,10 +39,15 @@ func (cache *CacheService) GetValue(key any) any {
 }
 
 func (cache *CacheService) PushValue(key, value any) {
+
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
 	cache.Cache[key] = CacheDataUnit{
 		CreatedAt: time.Now(),
 		CachedObj: value,
 	}
+
 }
 
 func (cache *CacheService) OlderThanAndExists(key any, duration time.Duration) bool {

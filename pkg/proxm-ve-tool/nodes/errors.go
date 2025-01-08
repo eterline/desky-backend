@@ -15,7 +15,7 @@ var (
 		return &NodesErr{fmt.Sprintf("node '%s' does not exists", name)}
 	}
 
-	ErrBadStatusCode = func(code int) error {
-		return &NodesErr{fmt.Sprintf("bad response status code: %v", code)}
+	ErrDiskPathNotExists = func(path string) error {
+		return &NodesErr{fmt.Sprintf("disk with dev-path '%s' does not exists", path)}
 	}
 )
