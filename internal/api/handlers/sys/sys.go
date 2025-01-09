@@ -49,9 +49,6 @@ func Init(hs HostService, ch Cacher) *SysHandlerGroup {
 		WS: websocket.Upgrader{
 			HandshakeTimeout:  10 * time.Second,
 			EnableCompression: true,
-			CheckOrigin: func(r *http.Request) bool {
-				return true // Разрешает подключения с любого домена
-			},
 		},
 	}
 }

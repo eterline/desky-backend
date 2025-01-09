@@ -26,25 +26,58 @@ func (pd *JWTauth) CreateSignedToken(credentials string) (string, error) {
 		jwt.SigningMethodHS512,
 		jwt.MapClaims{
 			"credentials": credentials,
-			"expiration":  pd.ExpirationTime,
+			"expire":      pd.expirationDate(),
 		},
 	)
 
 	return token.SignedString(pd.SecretKey)
 }
 
-func (pd *JWTauth) TokenIsValid(tokenString string) bool {
+func (pd *JWTauth) getSecretToken(tokenString *jwt.Token) (interface{}, error) {
+	return pd.SecretKey, nil
+}
 
-	var getSecretToken = func(tokenString *jwt.Token) (interface{}, error) {
-		return pd.SecretKey, nil
+func (pd *JWTauth) expirationDate() int64 {
+	return time.Now().Add(pd.ExpirationTime).Unix()
+}
+
+func tokenIsExpired(claims jwt.MapClaims) bool {
+
+	exp, ok := claims["expire"]
+	if !ok {
+		return true
 	}
 
-	token, err := jwt.Parse(tokenString, getSecretToken)
+	switch expValue := exp.(type) {
+
+	case float64:
+		expTime := time.Unix(int64(expValue), 0)
+		return expTime.Before(time.Now())
+
+	case json.Number:
+		expInt, err := expValue.Int64()
+		if err != nil {
+			return true
+		}
+		expTime := time.Unix(expInt, 0)
+		return expTime.Before(time.Now())
+
+	default:
+		return true
+	}
+
+}
+
+func (pd *JWTauth) TokenIsValid(tokenString string) bool {
+
+	claims := jwt.MapClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, pd.getSecretToken)
 	if err != nil {
 		return false
 	}
 
-	return token.Valid
+	return token.Valid && tokenIsExpired(claims)
 }
 
 type JWTPayload struct {
