@@ -40,6 +40,7 @@ type SysHandlerGroup struct {
 
 func Init(hs HostService, ch Cacher) *SysHandlerGroup {
 	log = logger.ReturnEntry().Logger
+	// conf := configuration.GetConfig()
 
 	return &SysHandlerGroup{
 		Sys:   hs,
@@ -48,6 +49,9 @@ func Init(hs HostService, ch Cacher) *SysHandlerGroup {
 		WS: websocket.Upgrader{
 			HandshakeTimeout:  10 * time.Second,
 			EnableCompression: true,
+			CheckOrigin: func(r *http.Request) bool {
+				return true // Разрешает подключения с любого домена
+			},
 		},
 	}
 }

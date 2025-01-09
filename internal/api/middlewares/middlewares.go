@@ -21,6 +21,7 @@ type MiddleWare struct {
 	logger      *logrus.Logger
 	jwt         JWTValidator
 	authEnabled bool
+	isDev       bool
 }
 
 func Init() *MiddleWare {
@@ -31,7 +32,21 @@ func Init() *MiddleWare {
 		logger:      logger.ReturnEntry().Logger,
 		jwt:         authorization.NewJWTauth(config.Server.JWTSecretBytes()),
 		authEnabled: config.Auth.Enabled,
+		isDev:       config.DevMode,
 	}
+}
+
+func (mw *MiddleWare) CORSDev(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+
+		next.ServeHTTP(writer, request)
+
+		if mw.isDev {
+			writer.Header().Set("Access-Control-Allow-Origin", "*")
+			writer.Header().Set("Access-Control-Allow-Methods", "GET, POST")
+			writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept")
+		}
+	})
 }
 
 func (mw *MiddleWare) Logging(next http.Handler) http.Handler {
@@ -57,6 +72,13 @@ func (mw *MiddleWare) Logging(next http.Handler) http.Handler {
 
 func (mw *MiddleWare) Compressor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+
+		if websocket.IsWebSocketUpgrade(request) {
+
+			next.ServeHTTP(writer, request)
+			return
+		}
+
 		middleware.Compress(5, "text/html", "text/css")
 		(next).ServeHTTP(writer, request)
 	})
@@ -101,5 +123,13 @@ func (mw *MiddleWare) PanicRecoverer(next http.Handler) http.Handler {
 }
 
 func parseBearer(r *http.Request, key string) string {
-	return strings.ReplaceAll(r.Header.Get("DeskyJWT"), "Bearer ", "")
+
+	b := r.Header.Get(key)
+
+	if b == "" {
+		r.ParseForm()
+		b = r.FormValue(key)
+	}
+
+	return strings.ReplaceAll(b, "Bearer ", "")
 }

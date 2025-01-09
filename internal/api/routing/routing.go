@@ -37,7 +37,7 @@ func (rt *APIRouting) ConfigRoutes() *chi.Mux {
 	router := rt.setBaseRouting()
 	protectedRoute := chi.NewRouter()
 
-	protectedRoute.Use(rt.MW.AuthorizationJWT)
+	protectedRoute.Use(rt.MW.AuthorizationJWT, rt.MW.CORSDev)
 
 	// controller for auth status checking
 	protectedRoute.Get("/check", handlers.InitController(frontend.AccessCheck))
@@ -111,6 +111,9 @@ func setSystemRouting() *chi.Mux {
 
 			HandlerParam{"GET", "/stats", sys.HostStatsWS},
 			HandlerParam{"GET", "/tty", sys.TtyWS},
+
+			HandlerParam{"GET", "/stats/", sys.HostStatsWS},
+			HandlerParam{"GET", "/tty/", sys.TtyWS},
 		},
 	)
 }
