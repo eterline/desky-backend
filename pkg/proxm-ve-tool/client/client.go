@@ -103,9 +103,15 @@ func (s *Session) MakeRequest(ctx context.Context, path string) *RequestProvide 
 		s.mu.Lock()
 		defer s.mu.Unlock()
 
-		new, err := s.refreshSession()
-		if err == nil {
-			s = new
+		count := 0
+
+		for count < 5 {
+			new, err := s.refreshSession()
+			if err == nil {
+				s = new
+				break
+			}
+			count++
 		}
 	}
 
