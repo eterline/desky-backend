@@ -38,6 +38,7 @@ func (pn *ProxmoxNode) DiskByDevPath(ctx context.Context, path string) (dsk *Dis
 
 	for _, d := range lst.Data {
 		if d.Devpath == path {
+			d.pn = pn
 			return &d, nil
 		}
 	}

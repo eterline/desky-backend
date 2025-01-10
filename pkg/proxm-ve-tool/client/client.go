@@ -8,7 +8,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
+	"sync"
+
+	expire "github.com/eterline/desky-backend/pkg/proxm-ve-tool"
 )
 
 const (
@@ -19,6 +21,8 @@ type (
 	Session struct {
 		Config       SessionConfig
 		cookie, csrf string
+		expireDate   expire.TimeDate
+		mu           sync.Mutex
 	}
 
 	SessionConfig struct {
@@ -77,9 +81,10 @@ func Connect(config *SessionConfig) (*Session, error) {
 	}
 
 	d := &Session{
-		Config: *config,
-		cookie: data.Data.Ticket,
-		csrf:   data.Data.CSRFPreventionToken,
+		Config:     *config,
+		cookie:     data.Data.Ticket,
+		csrf:       data.Data.CSRFPreventionToken,
+		expireDate: expire.ExpireIn(30),
 	}
 
 	return d, nil
@@ -93,6 +98,16 @@ type RequestProvide struct {
 }
 
 func (s *Session) MakeRequest(ctx context.Context, path string) *RequestProvide {
+
+	if s.expireDate.IsExpired() {
+		s.mu.Lock()
+		new, err := s.refreshSession()
+		if err == nil {
+			s = new
+		}
+		s.mu.Unlock()
+	}
+
 	req, _ := http.NewRequestWithContext(ctx, "", s.Config.APIurl.String()+path, nil)
 
 	req.Header.Add("Cookie", fmt.Sprintf("PVEAuthCookie=%s", s.cookie))
@@ -111,29 +126,8 @@ func (s *Session) MakeRequest(ctx context.Context, path string) *RequestProvide 
 	}
 }
 
-func (s *Session) ConnGuard(loopTime string, ctx context.Context) error {
-	delay, err := time.ParseDuration(loopTime)
-	if err != nil {
-		return err
-	}
-
-	timer := time.NewTicker(delay)
-
-	for {
-		select {
-
-		case <-ctx.Done():
-			return nil
-
-		case <-timer.C:
-			conn, err := Connect(&s.Config)
-			if err != nil {
-				continue
-			}
-
-			s = conn
-		}
-	}
+func (s *Session) refreshSession() (*Session, error) {
+	return Connect(&s.Config)
 }
 
 func (rp *RequestProvide) GET() (code int, err error) {

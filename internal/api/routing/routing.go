@@ -91,6 +91,9 @@ func setProxmoxRouting() *chi.Mux {
 			HandlerParam{"GET", "/{session}/{node}/status", pve.NodeStatus},
 			HandlerParam{"GET", "/{session}/{node}/devices", pve.DeviceList},
 
+			HandlerParam{"GET", "/{session}/{node}/disks", pve.DiskList},
+			HandlerParam{"GET", "/{session}/{node}/disks/smart", pve.SMART}, // TODO: Fix panic with exists disk
+
 			HandlerParam{"GET", "/{session}/{node}/apt/updates", pve.AptUpdates},
 			HandlerParam{"POST", "/{session}/{node}/apt/update", pve.AptUpdate},
 

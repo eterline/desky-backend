@@ -166,17 +166,7 @@ func (ph *ProxmoxHandlerGroup) AptUpdates(w http.ResponseWriter, r *http.Request
 		return op, err
 	}
 
-	q, err := handlers.ParseURLParameters(r, handlers.NumOpts("session"), handlers.StrOpts("node"))
-	if err != nil {
-		return op, err
-	}
-
-	pveSession, err := ph.Provider.GetSession(q.GetInt("session"))
-	if err != nil {
-		return op, err
-	}
-
-	node, err := pveSession.ResolveNode(q.GetStr("node"))
+	node, err := ph.parseVeNode(r)
 	if err != nil {
 		return op, err
 	}
@@ -191,24 +181,13 @@ func (ph *ProxmoxHandlerGroup) AptUpdates(w http.ResponseWriter, r *http.Request
 
 func (ph *ProxmoxHandlerGroup) AptUpdate(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.apt-updates"
-
 	ctx := context.Background()
 
 	if err := ph.invalidSessionsHandler(w); err != nil {
 		return op, err
 	}
 
-	q, err := handlers.ParseURLParameters(r, handlers.NumOpts("session"), handlers.StrOpts("node"))
-	if err != nil {
-		return op, err
-	}
-
-	pveSession, err := ph.Provider.GetSession(q.GetInt("session"))
-	if err != nil {
-		return op, err
-	}
-
-	node, err := pveSession.ResolveNode(q.GetStr("node"))
+	node, err := ph.parseVeNode(r)
 	if err != nil {
 		return op, err
 	}
@@ -218,4 +197,53 @@ func (ph *ProxmoxHandlerGroup) AptUpdate(w http.ResponseWriter, r *http.Request)
 	}
 
 	return op, handlers.StatusOK(w, "update task successfully")
+}
+
+func (ph *ProxmoxHandlerGroup) DiskList(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.proxmox.disk-list"
+	ctx := context.Background()
+
+	if err := ph.invalidSessionsHandler(w); err != nil {
+		return op, err
+	}
+
+	node, err := ph.parseVeNode(r)
+	if err != nil {
+		return op, err
+	}
+
+	lst, err := node.Disks(ctx)
+	if err != nil {
+		return op, err
+	}
+
+	return op, handlers.WriteJSON(w, http.StatusOK, lst.Data)
+}
+
+func (ph *ProxmoxHandlerGroup) SMART(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handlers.proxmox.disk-list"
+	ctx := context.Background()
+
+	r.ParseForm()
+
+	if err := ph.invalidSessionsHandler(w); err != nil {
+		return op, err
+	}
+
+	node, err := ph.parseVeNode(r)
+	if err != nil {
+		return op, err
+	}
+
+	disk, err := node.DiskByDevPath(ctx, r.FormValue("dev"))
+	if err != nil {
+		return op, err
+	}
+
+	smart, err := disk.SMART(ctx)
+	if err != nil {
+		return op, err
+	}
+
+	return op, handlers.WriteJSON(w, http.StatusOK, smart)
 }
