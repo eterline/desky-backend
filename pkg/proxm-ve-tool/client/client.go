@@ -101,11 +101,12 @@ func (s *Session) MakeRequest(ctx context.Context, path string) *RequestProvide 
 
 	if s.expireDate.IsExpired() {
 		s.mu.Lock()
+		defer s.mu.Unlock()
+
 		new, err := s.refreshSession()
 		if err == nil {
 			s = new
 		}
-		s.mu.Unlock()
 	}
 
 	req, _ := http.NewRequestWithContext(ctx, "", s.Config.APIurl.String()+path, nil)

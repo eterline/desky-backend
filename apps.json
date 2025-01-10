@@ -11,6 +11,12 @@
          "description": "Jellyfin is a free and open-source media server software that allows you to stream videos, music, and other media content to various devices.",
          "link": "https://jellyfin.org",
          "icon": "jellyfin"
+      },
+      {
+         "name": "Test",
+         "description": "sss",
+         "link": "http://localhost:9400/",
+         "icon": "docker"
       }
    ],
    "SelfHosting": [
@@ -31,6 +37,14 @@
          "description": "Home Assistant is an open-source home automation platform that focuses on local control and privacy for smart home devices.",
          "link": "https://www.home-assistant.io",
          "icon": "home-assistant"
+      }
+   ],
+   "pdlpldw": [
+      {
+         "name": "dwedwe",
+         "description": "ffwefe",
+         "link": "fewfefe",
+         "icon": "efffe"
       }
    ]
 }
