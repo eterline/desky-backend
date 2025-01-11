@@ -25,7 +25,7 @@ func IsAppsFileServiceError(e error) bool {
 
 var (
 	ErrCannotOpen = func(path string) *AppsFileServiceErrors {
-		return &AppsFileServiceErrors{fmt.Errorf("can't open file %s. opening default")}
+		return &AppsFileServiceErrors{fmt.Errorf("can't open file '%s'. opening default", path)}
 	}
 
 	ErrQueryOutOfRange = errors.New("app query number out of range")
