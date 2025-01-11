@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/models"
 	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/client"
 	nodes "github.com/eterline/desky-backend/pkg/proxm-ve-tool/nodes"
 	"github.com/eterline/desky-backend/pkg/proxm-ve-tool/virtual"
@@ -13,12 +14,6 @@ import (
 const (
 	DataDivisorNumber = 1024 // Divisor value for data measures
 )
-
-// Implements Proxmox VE sessions provider for web-server
-type VEService struct {
-	ErrCount     int
-	SessionStack []*nodes.NodeProvider
-}
 
 func Init() *VEService {
 	config := configuration.GetConfig().Proxmox
@@ -57,12 +52,6 @@ func (pp *VEService) AnyValidConns() bool {
 func (pp *VEService) AvailSessions() int {
 	return len(pp.SessionStack)
 }
-
-type ProvideInstance struct {
-	*nodes.NodeProvider
-}
-
-type SessionNodes []nodes.NodeUnit
 
 func (pp *VEService) SessionList() (sessions []SessionNodes, err error) {
 
@@ -116,7 +105,7 @@ func (pi *ProvideInstance) ResolveDevice(node string, vmid int) (v *virtual.Virt
 	return nodeInstance.VirtMachineInstance(vmid)
 }
 
-func (pi *ProvideInstance) NodeStatus(ctx context.Context, node string) (status *PVENodeStatus, err error) {
+func (pi *ProvideInstance) NodeStatus(ctx context.Context, node string) (status *models.PVENodeStatus, err error) {
 
 	nodeInstance, err := pi.ResolveNode(node)
 	if err != nil {
@@ -130,21 +119,21 @@ func (pi *ProvideInstance) NodeStatus(ctx context.Context, node string) (status 
 
 	data := nodeStatus.Data
 
-	return &PVENodeStatus{
+	return &models.PVENodeStatus{
 		Name:    node,
-		AVGLoad: AVGLoadData(data.Loadavg),
+		AVGLoad: models.AVGLoadData(data.Loadavg),
 
-		FS: FSData{
+		FS: models.FSData{
 			Used:  data.Rootfs.Used / DataDivisorNumber / DataDivisorNumber,
 			Total: data.Rootfs.Total / DataDivisorNumber / DataDivisorNumber,
 		},
 
-		RAM: RAMData{
+		RAM: models.RAMData{
 			Used:  data.Memory.Used / DataDivisorNumber / DataDivisorNumber,
 			Total: data.Memory.Total / DataDivisorNumber / DataDivisorNumber,
 		},
 
-		CPU: CPUData{
+		CPU: models.CPUData{
 			Load:      math.Ceil(data.CPU),
 			Model:     data.Cpuinfo.Model,
 			Cores:     data.Cpuinfo.Cores,
@@ -156,7 +145,7 @@ func (pi *ProvideInstance) NodeStatus(ctx context.Context, node string) (status 
 	}, nil
 }
 
-func (pi *ProvideInstance) DeviceList(ctx context.Context, node string) (listDev *DevicesList, err error) {
+func (pi *ProvideInstance) DeviceList(ctx context.Context, node string) (listDev *models.DevicesList, err error) {
 
 	nodeInstance, err := pi.ResolveNode(node)
 	if err != nil {
@@ -173,12 +162,12 @@ func (pi *ProvideInstance) DeviceList(ctx context.Context, node string) (listDev
 		return nil, err
 	}
 
-	listDev = &DevicesList{}
+	listDev = &models.DevicesList{}
 
 	for _, prop := range lxcList.Data {
 		listDev.LXC = append(
 			listDev.LXC,
-			TypeDevice{
+			models.TypeDevice{
 				Status: prop.Status,
 				Name:   prop.Name,
 				Tags:   prop.Tags,
@@ -195,7 +184,7 @@ func (pi *ProvideInstance) DeviceList(ctx context.Context, node string) (listDev
 	for _, prop := range qemuList.Data {
 		listDev.QEMU = append(
 			listDev.QEMU,
-			TypeDevice{
+			models.TypeDevice{
 				Status: prop.Status,
 				Name:   prop.Name,
 				Tags:   prop.Tags,
