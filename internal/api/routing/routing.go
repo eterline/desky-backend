@@ -10,6 +10,7 @@ import (
 	"github.com/eterline/desky-backend/internal/api/handlers/sys"
 	mws "github.com/eterline/desky-backend/internal/api/middlewares"
 	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/services/apps/appsfile"
 	"github.com/eterline/desky-backend/internal/services/authorization"
 	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/eterline/desky-backend/internal/services/system"
@@ -71,13 +72,19 @@ func (rt *APIRouting) setBaseRouting() *chi.Mux {
 }
 
 func setApplicationsRouting() *chi.Mux {
-	as := applications.Init("apps.json")
+
+	apps, err := appsfile.Init(appsfile.DefaultPath)
+	if err != nil {
+		return chi.NewMux()
+	}
+
+	group := applications.Init(apps)
 
 	return BuildSubroute(
 		RoutesConfig{
-			HandlerParam{"GET", "/table", as.ReturnAppsTable},
-			HandlerParam{"POST", "/table/{topic}", as.AppendApp},
-			HandlerParam{"DELETE", "/table/{topic}/{number}", as.DeleteApp},
+			HandlerParam{"GET", "/table", group.ShowTable},
+			HandlerParam{"POST", "/table/{topic}", group.AppendApp},
+			HandlerParam{"DELETE", "/table/{topic}/{number}", group.DeleteApp},
 		},
 	)
 }
