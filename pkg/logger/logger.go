@@ -2,82 +2,53 @@ package logger
 
 import (
 	"io"
-	"log"
 	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/sirupsen/logrus"
-	easy "github.com/t-tomalak/logrus-easy-formatter"
+)
+
+const (
+	_ EnvValue = iota
+	LOCAL
+	DEVELOP
+	PRODUCTION
 )
 
 var entry *logrus.Entry
 var HookTargets []io.Writer
 
-func (h *writerHook) Fire(entr *logrus.Entry) error {
-	str, err := entr.String()
+type LogWorker struct {
+	*logrus.Entry
+}
+
+func ReturnEntry() LogWorker {
+	return LogWorker{entry}
+}
+
+func InitLogger(options ...LoggerOptionFunc) error {
+	opts := mustOptions(options...)
+
+	logFile, err := os.OpenFile(returnName(opts), os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	for _, w := range h.Writer {
-		w.Write([]byte(str))
-	}
-	return err
-}
 
-func (h *writerHook) Levels() []logrus.Level {
-	return h.LogLevels
-}
-
-func InitLogger(path, filename string, level uint) error {
 	l := logrus.New()
-	l.SetReportCaller(true)
-	l.SetLevel(logrus.Level(level))
 
-	l.Formatter = &easy.Formatter{
-		TimestampFormat: "2006-01-02 15:04:05",
-		LogFormat:       "[%lvl%]: %time% - %msg% \n",
-	}
-
-	fp := filepath.Join(path, filename)
-	logFile, err := os.OpenFile(fp, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
-	if err != nil {
-		return err
-	}
-
-	HookTargets = append(HookTargets, logFile)
-	HookTargets = append(HookTargets, os.Stdout)
+	l.Formatter = returnFormatter(opts)
+	HookTargets = append(HookTargets, logFile, os.Stdout)
 
 	l.SetOutput(io.Discard)
 	l.AddHook(&writerHook{
 		Writer:    HookTargets,
 		LogLevels: logrus.AllLevels,
 	})
-	l.SetLevel(logrus.TraceLevel)
+
+	l.SetLevel(opts.level)
+	l.SetReportCaller(true)
 	entry = logrus.NewEntry(l)
 
-	l.Debug("App logging initialized")
-	return nil
-}
-
-func InitWithConfig(config LoggingConfig) error {
-	logfile := "trace.log"
-
-	if config.Renew {
-		logfile = "trace." + time.Now().Format(time.RFC3339) + ".log"
-	}
-
-	if err := InitLogger(config.Dir, logfile, config.Level); err != nil {
-
-		errDefault := InitLogger("", "trace.log", 0)
-
-		if errDefault != nil {
-			log.Fatalf("can't start app: %s", err)
-		}
-
-		ReturnEntry().Errorf("can't use log config: %s", err)
-		return err
-	}
+	l.Debugf("logger initialized with log level: %s and env: %s", opts.level, opts.env)
 
 	return nil
 }
