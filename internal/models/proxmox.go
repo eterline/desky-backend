@@ -2,32 +2,32 @@ package models
 
 type (
 	PVENodeStatus struct {
-		Name    string      `json:"name"`
+		Name    string      `json:"name" example"micro-ve"`
 		AVGLoad AVGLoadData `json:"load"`
 		FS      FSData      `json:"fs"`
 		RAM     RAMData     `json:"ram"`
 		CPU     CPUData     `json:"cpu"`
-		Uptime  int64       `json:"uptime"`
-		Kernel  string      `json:"kernel"`
+		Uptime  int64       `json:"uptime" example"512"`
+		Kernel  string      `json:"kernel" example"pve"`
 	}
 
 	AVGLoadData [3]string
 
 	FSData struct {
-		Used  int64 `json:"used"`
-		Total int64 `json:"total"`
+		Used  int64 `json:"used" example"13255"`
+		Total int64 `json:"total" example"13255"`
 	}
 
 	RAMData struct {
-		Used  int64 `json:"used"`
-		Total int64 `json:"total"`
+		Used  int64 `json:"used" example:"3220"`
+		Total int64 `json:"total" example:"7680"`
 	}
 
 	CPUData struct {
-		Load      float64 `json:"load"`
-		Model     string  `json:"model"`
-		Cores     int     `json:"cores"`
-		Frequency string  `json:"frequency"`
+		Load      float64 `json:"load" example:"13"`
+		Model     string  `json:"model" example:"5"`
+		Cores     int     `json:"cores" example:"6"`
+		Frequency string  `json:"frequency" example:"4300Mhz"`
 	}
 )
 

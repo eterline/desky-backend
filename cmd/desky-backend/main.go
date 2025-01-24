@@ -40,6 +40,11 @@ False: 'trace.log'
 	}
 }
 
+//	@title		Desky API
+//	@version	1.0
+
+//	@host		0.0.0.0:3000
+//	@BasePath	/api/v1
 func main() {
 	if err := configuration.Init(configFile); err != nil {
 		panic(err)

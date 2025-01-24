@@ -42,6 +42,17 @@ func (ph *ProxmoxHandlerGroup) invalidSessionsHandler(w http.ResponseWriter) err
 	return nil
 }
 
+// Sessions godoc
+//
+//	@Summary		Sessions
+//	@Description	Proxmox sessions
+//	@Tags			pve
+//
+//	@Accept			json
+//	@Produce		json
+//	@Failure		500	{object}	handlers.APIErrorResponse
+//	@Success		200	{array}		[]ve.SessionNodes
+//	@Router			/pve/sessions [get]
 func (ph *ProxmoxHandlerGroup) Sessions(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.sessions"
 
@@ -57,6 +68,19 @@ func (ph *ProxmoxHandlerGroup) Sessions(w http.ResponseWriter, r *http.Request) 
 	return op, err
 }
 
+// NodeStatus godoc
+//
+//	@Summary		NodeStatus
+//	@Description	Retrieve detailed status information for a Proxmox VE node, including load, filesystem, RAM, CPU, and uptime.
+//	@Tags			pve
+//
+//	@Produce		json
+//	@Param			session	path		string	true	"Session ID"
+//	@Param			node	path		string	true	"Node Name"
+//	@Success		200		{object}	models.PVENodeStatus
+//	@Failure		400		{object}	handlers.APIErrorResponse	"Invalid parameters"
+//	@Failure		500		{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/pve/{session}/{node}/status [get]
 func (ph *ProxmoxHandlerGroup) NodeStatus(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.node-status"
 
@@ -84,6 +108,19 @@ func (ph *ProxmoxHandlerGroup) NodeStatus(w http.ResponseWriter, r *http.Request
 	return op, err
 }
 
+// DeviceList godoc
+//
+//	@Tags			pve
+//	@Summary		DeviceList
+//	@Description	Getting ve devices list information.
+//
+//	@Produce		json
+//	@Param			session	path		string	true	"Session ID"
+//	@Param			node	path		string	true	"Node Name"
+//	@Success		200		{object}	models.DevicesList
+//	@Failure		400		{object}	handlers.APIErrorResponse	"Invalid parameters"
+//	@Failure		500		{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/pve/{session}/{node}/devices [get]
 func (ph *ProxmoxHandlerGroup) DeviceList(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.device-list"
 
@@ -111,6 +148,22 @@ func (ph *ProxmoxHandlerGroup) DeviceList(w http.ResponseWriter, r *http.Request
 	return op, err
 }
 
+// DeviceCommand godoc
+//
+//	@Tags			pve
+//	@Summary		DeviceCommand
+//	@Description	execute device command
+//
+//	@Produce		json
+//	@Param			session	path		string	true	"Session ID"
+//	@Param			node	path		string	true	"Node Name"
+//	@Param			vmid	path		string	true	"VMID"
+//	@Param			command	query		string	true	"VM Command"	Enums(stop, start, shutdown, suspend, resume)
+//	@Success		200		{object}	handlers.APIResponse
+//	@Failure		400		{object}	handlers.APIErrorResponse	"Invalid parameters"
+//	@Failure		500		{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Failure		501		{object}	handlers.APIErrorResponse	"Uninplemented"
+//	@Router			/pve/{session}/{node}/devices/{vmid}/{command} [post]
 func (ph *ProxmoxHandlerGroup) DeviceCommand(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.device-command"
 
@@ -157,6 +210,19 @@ func (ph *ProxmoxHandlerGroup) DeviceCommand(w http.ResponseWriter, r *http.Requ
 	return op, handlers.StatusOK(w, "operation successfully")
 }
 
+// AptUpdates godoc
+//
+//	@Tags			pve
+//	@Summary		AptUpdates
+//	@Description	getting apt proxmox update list
+//
+//	@Produce		json
+//	@Param			session	path		string	true	"Session ID"
+//	@Param			node	path		string	true	"Node Name"
+//	@Success		200		{object}	nodes.AptUpdates
+//	@Failure		400		{object}	handlers.APIErrorResponse	"Invalid parameters"
+//	@Failure		500		{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/pve/{session}/{node}/apt/updates [get]
 func (ph *ProxmoxHandlerGroup) AptUpdates(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.apt-updates"
 
@@ -179,6 +245,19 @@ func (ph *ProxmoxHandlerGroup) AptUpdates(w http.ResponseWriter, r *http.Request
 	return op, handlers.WriteJSON(w, http.StatusOK, u.Data)
 }
 
+// AptUpdate godoc
+//
+//	@Tags			pve
+//	@Summary		AptUpdate
+//	@Description	update proxmox apt packages
+//
+//	@Produce		json
+//	@Param			session	path		string	true	"Session ID"
+//	@Param			node	path		string	true	"Node Name"
+//	@Success		200		{object}	handlers.APIResponse
+//	@Failure		400		{object}	handlers.APIErrorResponse	"Invalid parameters"
+//	@Failure		500		{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/pve/{session}/{node}/apt/update [post]
 func (ph *ProxmoxHandlerGroup) AptUpdate(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.apt-updates"
 	ctx := context.Background()
@@ -199,6 +278,19 @@ func (ph *ProxmoxHandlerGroup) AptUpdate(w http.ResponseWriter, r *http.Request)
 	return op, handlers.StatusOK(w, "update task successfully")
 }
 
+// DiskList godoc
+//
+//	@Tags			pve
+//	@Summary		DiskList
+//	@Description	getting disk list
+//
+//	@Produce		json
+//	@Param			session	path		string	true	"Session ID"
+//	@Param			node	path		string	true	"Node Name"
+//	@Success		200		{object}	nodes.DisksInfo
+//	@Failure		400		{object}	handlers.APIErrorResponse	"Invalid parameters"
+//	@Failure		500		{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/pve/{session}/{node}/disks [get]
 func (ph *ProxmoxHandlerGroup) DiskList(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.disk-list"
 	ctx := context.Background()
@@ -220,6 +312,20 @@ func (ph *ProxmoxHandlerGroup) DiskList(w http.ResponseWriter, r *http.Request) 
 	return op, handlers.WriteJSON(w, http.StatusOK, lst.Data)
 }
 
+// smart godoc
+//
+//	@Tags			pve
+//	@Summary		smart
+//	@Description	getting disk SMART info
+//
+//	@Produce		json
+//	@Param			session	path		string	true	"Session ID"
+//	@Param			node	path		string	true	"Node Name"
+//	@Param			dev		query		string	true	"device path"
+//	@Success		200		{object}	nodes.Smart
+//	@Failure		400		{object}	handlers.APIErrorResponse	"Invalid parameters"
+//	@Failure		500		{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/pve/{session}/{node}/disks/smart [get]
 func (ph *ProxmoxHandlerGroup) SMART(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.proxmox.disk-list"
 	ctx := context.Background()

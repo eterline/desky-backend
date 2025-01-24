@@ -28,4 +28,10 @@ build-test:
 test: build-test
 	./$(app-test)
 
+swag:
+	swag init -g ./cmd/$(app)/main.go
+
+doc:
+	godoc -http localhost:3000
+
 .DEFAULT_GOAL := run

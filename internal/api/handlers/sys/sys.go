@@ -53,12 +53,32 @@ func Init(hs HostService, ch Cacher) *SysHandlerGroup {
 	}
 }
 
+// HostInfo godoc
+//
+//	@Tags			system
+//	@Summary		HostInfo
+//	@Description	host information
+//
+//	@Produce		json
+//	@Success		200	{object}	system.HostInfo
+//	@Failure		500	{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/system/info [get]
 func (s *SysHandlerGroup) HostInfo(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.sys.host-info"
 
 	return op, handlers.WriteJSON(w, http.StatusOK, s.Sys.HostInfo())
 }
 
+// HostStatsWS godoc
+//
+//	@Tags			system
+//	@Summary		HostStatsWS
+//	@Description	host information ws interval update = 5s
+//
+//	@Produce		json
+//	@Success		200	{object}	StatsResponse
+//	@Failure		500	{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/system/stats [get]
 func (s *SysHandlerGroup) HostStatsWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.sys.host-stats-WS"
 
@@ -145,6 +165,17 @@ func (s *SysHandlerGroup) TtyWS(w http.ResponseWriter, r *http.Request) (op stri
 	}
 }
 
+// SystemdUnits godoc
+//
+//	@Tags			system
+//	@Summary		SystemdUnits
+//	@Description	units systemd list
+//	@Param			page	query	string	false	"Page number for pagination (optional)"
+//	@Param			count	query	string	false	"Number of items per page (optional)"
+//	@Produce		json
+//	@Success		200	{object}	[]system.SystemdUnit
+//	@Failure		500	{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Router			/system/systemd/status [get]
 func (s *SysHandlerGroup) SystemdUnits(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.sys.host-info"
 
@@ -199,6 +230,20 @@ func paginateSystemdUnits(list []system.SystemdUnit, pageNumber, perPage int) []
 	return filtered
 }
 
+// UnitCommand godoc
+//
+//	@Tags			system
+//	@Summary		UnitCommand
+//	@Description	execute device command
+//
+//	@Produce		json
+//	@Param			command	path		string	true	"systemd command"
+//	@Param			service	path		string	true	"systemd service"
+//	@Success		200		{object}	handlers.APIResponse
+//	@Failure		400		{object}	handlers.APIErrorResponse	"Invalid parameters"
+//	@Failure		500		{object}	handlers.APIErrorResponse	"Internal server error"
+//	@Failure		501		{object}	handlers.APIErrorResponse	"Uninplemented"
+//	@Router			/system/systemd/{service}/{command} [post]
 func (s *SysHandlerGroup) UnitCommand(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.sys.unit-command"
 

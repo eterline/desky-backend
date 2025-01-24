@@ -3,6 +3,7 @@ package routing
 import (
 	"fmt"
 
+	_ "github.com/eterline/desky-backend/docs"
 	"github.com/eterline/desky-backend/internal/api/handlers"
 	"github.com/eterline/desky-backend/internal/api/handlers/applications"
 	"github.com/eterline/desky-backend/internal/api/handlers/frontend"
@@ -15,6 +16,7 @@ import (
 	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/eterline/desky-backend/internal/services/system"
 	"github.com/go-chi/chi"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type APIRouting struct {
@@ -56,6 +58,8 @@ func (rt *APIRouting) setBaseRouting() *chi.Mux {
 	chi := chi.NewMux()
 
 	chi.Use(rt.MW.PanicRecoverer, rt.MW.Logging, rt.MW.Compressor)
+
+	chi.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	front := frontend.Init(authorization.InitAuth(configuration.GetConfig()))
 

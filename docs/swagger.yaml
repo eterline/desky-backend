@@ -1,0 +1,771 @@
+basePath: /api/v1
+definitions:
+  handlers.APIErrorResponse:
+    properties:
+      code:
+        type: integer
+      message: {}
+    type: object
+  handlers.APIResponse:
+    properties:
+      code:
+        type: integer
+      message: {}
+    type: object
+  models.AppDetails:
+    properties:
+      description:
+        example: nextcloud self-hosted cloud
+        type: string
+      icon:
+        example: nextcloud
+        type: string
+      link:
+        example: https://nextcloud.lan
+        type: string
+      name:
+        example: Nextcloud
+        maxLength: 20
+        minLength: 3
+        type: string
+    required:
+    - description
+    - icon
+    - link
+    - name
+    type: object
+  models.AppsTable:
+    additionalProperties:
+      items:
+        $ref: '#/definitions/models.AppDetails'
+      type: array
+    type: object
+  models.CPUData:
+    properties:
+      cores:
+        example: 6
+        type: integer
+      frequency:
+        example: 4300Mhz
+        type: string
+      load:
+        example: 13
+        type: number
+      model:
+        example: "5"
+        type: string
+    type: object
+  models.DevicesList:
+    properties:
+      lxc:
+        items:
+          $ref: '#/definitions/models.TypeDevice'
+        type: array
+      qemu:
+        items:
+          $ref: '#/definitions/models.TypeDevice'
+        type: array
+    type: object
+  models.FSData:
+    properties:
+      total:
+        type: integer
+      used:
+        type: integer
+    type: object
+  models.PVENodeStatus:
+    properties:
+      cpu:
+        $ref: '#/definitions/models.CPUData'
+      fs:
+        $ref: '#/definitions/models.FSData'
+      kernel:
+        type: string
+      load:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      ram:
+        $ref: '#/definitions/models.RAMData'
+      uptime:
+        type: integer
+    type: object
+  models.RAMData:
+    properties:
+      total:
+        example: 7680
+        type: integer
+      used:
+        example: 3220
+        type: integer
+    type: object
+  models.TypeDevice:
+    properties:
+      cpus:
+        type: integer
+      name:
+        type: string
+      netRX:
+        type: integer
+      netTX:
+        type: integer
+      pid:
+        type: integer
+      status:
+        type: string
+      tags:
+        type: string
+      uptime:
+        type: integer
+      vmid:
+        type: integer
+    type: object
+  nodes.AptUpdateUnit:
+    properties:
+      Arch:
+        type: string
+      Description:
+        type: string
+      OldVersion:
+        type: string
+      Origin:
+        type: string
+      Package:
+        type: string
+      Priority:
+        type: string
+      Section:
+        type: string
+      Title:
+        type: string
+      Version:
+        type: string
+    type: object
+  nodes.AptUpdates:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/nodes.AptUpdateUnit'
+        type: array
+    type: object
+  nodes.DiskUnit:
+    properties:
+      by_id_link:
+        type: string
+      devpath:
+        type: string
+      gpt:
+        type: integer
+      health:
+        type: string
+      model:
+        type: string
+      osdid:
+        type: integer
+      osdid-list: {}
+      rpm:
+        type: integer
+      serial:
+        type: string
+      size:
+        type: integer
+      type:
+        type: string
+      used:
+        type: string
+      vendor:
+        type: string
+      wearout:
+        type: integer
+      wwn:
+        type: string
+    type: object
+  nodes.DisksInfo:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/nodes.DiskUnit'
+        type: array
+    type: object
+  nodes.NodeUnit:
+    properties:
+      cpu:
+        type: number
+      disk:
+        type: integer
+      id:
+        type: string
+      level:
+        type: string
+      maxcpu:
+        type: integer
+      maxdisk:
+        type: integer
+      maxmem:
+        type: integer
+      mem:
+        type: integer
+      node:
+        type: string
+      ssl_fingerprint:
+        type: string
+      status:
+        type: string
+      type:
+        type: string
+      uptime:
+        type: integer
+    type: object
+  nodes.Smart:
+    properties:
+      health:
+        type: string
+      info:
+        $ref: '#/definitions/nodes.SmartInfo'
+      type:
+        type: string
+      wearout:
+        type: integer
+    type: object
+  nodes.SmartInfo:
+    additionalProperties:
+      type: string
+    type: object
+  sys.StatsResponse:
+    properties:
+      cpu:
+        $ref: '#/definitions/system.CPUInfo'
+      load:
+        $ref: '#/definitions/system.AverageLoad'
+      memory:
+        $ref: '#/definitions/system.RAMInfo'
+      temperature:
+        items:
+          $ref: '#/definitions/system.SensorInfo'
+        type: array
+    type: object
+  system.AverageLoad:
+    properties:
+      load1:
+        type: number
+      load5:
+        type: number
+      load15:
+        type: number
+    type: object
+  system.CPUInfo:
+    properties:
+      cache:
+        type: integer
+      coreCount:
+        type: integer
+      cores:
+        items:
+          $ref: '#/definitions/system.CpuCore'
+        type: array
+      load:
+        type: number
+      model:
+        type: string
+      name:
+        type: string
+      threadCount:
+        type: integer
+    type: object
+  system.CpuCore:
+    properties:
+      frequency:
+        type: number
+      id:
+        type: string
+    type: object
+  system.HostInfo:
+    properties:
+      addrs:
+        items:
+          type: string
+        type: array
+      hostname:
+        type: string
+      os:
+        type: string
+      procs:
+        type: integer
+      uptime:
+        type: number
+      virt:
+        type: string
+    type: object
+  system.RAMInfo:
+    properties:
+      available:
+        type: integer
+      total:
+        type: integer
+      use:
+        type: number
+      used:
+        type: integer
+    type: object
+  system.SensorInfo:
+    properties:
+      current:
+        type: number
+      key:
+        type: string
+      max:
+        type: number
+    type: object
+  system.SystemdUnit:
+    properties:
+      preset:
+        type: string
+      state:
+        type: string
+      unit_file:
+        type: string
+    type: object
+host: 0.0.0.0:3000
+info:
+  contact: {}
+  title: Desky API
+  version: "1.0"
+paths:
+  /apps/table:
+    get:
+      consumes:
+      - application/json
+      description: Showing apps table with their info
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AppsTable'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: ShowTable
+  /apps/table/{topic}:
+    post:
+      consumes:
+      - application/json
+      description: Adding app
+      parameters:
+      - description: app params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AppDetails'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: AppendApp
+  /apps/table/{topic}/{number}:
+    delete:
+      consumes:
+      - application/json
+      description: Deleting app
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: DeleteApp
+  /pve/{session}/{node}/apt/update:
+    post:
+      description: update proxmox apt packages
+      parameters:
+      - description: Session ID
+        in: path
+        name: session
+        required: true
+        type: string
+      - description: Node Name
+        in: path
+        name: node
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: AptUpdate
+      tags:
+      - pve
+  /pve/{session}/{node}/apt/updates:
+    get:
+      description: getting apt proxmox update list
+      parameters:
+      - description: Session ID
+        in: path
+        name: session
+        required: true
+        type: string
+      - description: Node Name
+        in: path
+        name: node
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/nodes.AptUpdates'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: AptUpdates
+      tags:
+      - pve
+  /pve/{session}/{node}/devices:
+    get:
+      description: Getting ve devices list information.
+      parameters:
+      - description: Session ID
+        in: path
+        name: session
+        required: true
+        type: string
+      - description: Node Name
+        in: path
+        name: node
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DevicesList'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: DeviceList
+      tags:
+      - pve
+  /pve/{session}/{node}/devices/{vmid}/{command}:
+    post:
+      description: execute device command
+      parameters:
+      - description: Session ID
+        in: path
+        name: session
+        required: true
+        type: string
+      - description: Node Name
+        in: path
+        name: node
+        required: true
+        type: string
+      - description: VMID
+        in: path
+        name: vmid
+        required: true
+        type: string
+      - description: VM Command
+        enum:
+        - stop
+        - start
+        - shutdown
+        - suspend
+        - resume
+        in: query
+        name: command
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "501":
+          description: Uninplemented
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: DeviceCommand
+      tags:
+      - pve
+  /pve/{session}/{node}/disks:
+    get:
+      description: getting disk list
+      parameters:
+      - description: Session ID
+        in: path
+        name: session
+        required: true
+        type: string
+      - description: Node Name
+        in: path
+        name: node
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/nodes.DisksInfo'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: DiskList
+      tags:
+      - pve
+  /pve/{session}/{node}/disks/smart:
+    get:
+      description: getting disk SMART info
+      parameters:
+      - description: Session ID
+        in: path
+        name: session
+        required: true
+        type: string
+      - description: Node Name
+        in: path
+        name: node
+        required: true
+        type: string
+      - description: device path
+        in: query
+        name: dev
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/nodes.Smart'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: smart
+      tags:
+      - pve
+  /pve/{session}/{node}/status:
+    get:
+      description: Retrieve detailed status information for a Proxmox VE node, including
+        load, filesystem, RAM, CPU, and uptime.
+      parameters:
+      - description: Session ID
+        in: path
+        name: session
+        required: true
+        type: string
+      - description: Node Name
+        in: path
+        name: node
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PVENodeStatus'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: NodeStatus
+      tags:
+      - pve
+  /pve/sessions:
+    get:
+      consumes:
+      - application/json
+      description: Proxmox sessions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              items:
+                items:
+                  $ref: '#/definitions/nodes.NodeUnit'
+                type: array
+              type: array
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: Sessions
+      tags:
+      - pve
+  /system/info:
+    get:
+      description: host information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/system.HostInfo'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: HostInfo
+      tags:
+      - system
+  /system/stats:
+    get:
+      description: host information ws interval update = 5s
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sys.StatsResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: HostStatsWS
+      tags:
+      - system
+  /system/systemd/{service}/{command}:
+    post:
+      description: execute device command
+      parameters:
+      - description: systemd command
+        in: path
+        name: command
+        required: true
+        type: string
+      - description: systemd service
+        in: path
+        name: service
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+        "501":
+          description: Uninplemented
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: UnitCommand
+      tags:
+      - system
+  /system/systemd/status:
+    get:
+      description: units systemd list
+      parameters:
+      - description: Page number for pagination (optional)
+        in: query
+        name: page
+        type: string
+      - description: Number of items per page (optional)
+        in: query
+        name: count
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/system.SystemdUnit'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.APIErrorResponse'
+      summary: SystemdUnits
+      tags:
+      - system
+swagger: "2.0"

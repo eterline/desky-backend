@@ -25,6 +25,17 @@ func Init(service AppsService) *AppsHandlerGroup {
 	}
 }
 
+// ShowTable godoc
+//
+//	@Summary		ShowTable
+//	@Description	Showing apps table with their info
+//	@Tags			applications
+//
+//	@Accept			json
+//	@Produce		json
+//	@Failure		501	{object}	handlers.APIErrorResponse
+//	@Success		200	{object}	models.AppsTable
+//	@Router			/apps/table [get]
 func (as *AppsHandlerGroup) ShowTable(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.applications.show-table"
 
@@ -43,6 +54,18 @@ func (as *AppsHandlerGroup) ShowTable(w http.ResponseWriter, r *http.Request) (o
 	return op, err
 }
 
+// AppendApp godoc
+//
+//	@Summary		AppendApp
+//	@Description	Adding app
+//	@Tags			applications
+//
+//	@Param			request	body	models.AppDetails	true	"app params"
+//	@Accept			json
+//	@Produce		json
+//	@Failure		501	{object}	handlers.APIErrorResponse
+//	@Success		200	{object}	handlers.APIResponse
+//	@Router			/apps/table/{topic} [post]
 func (as *AppsHandlerGroup) AppendApp(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.applications.append-app"
 	data := models.AppDetails{}
@@ -70,6 +93,18 @@ func (as *AppsHandlerGroup) AppendApp(w http.ResponseWriter, r *http.Request) (o
 	return op, err
 }
 
+// DeleteApp godoc
+//
+//	@Summary		DeleteApp
+//	@Description	Deleting app
+//	@Tags			applications
+//
+//	@Accept			json
+//	@Produce		json
+//	@Failure		501	{object}	handlers.APIErrorResponse
+//	@Success		200	{object}	handlers.APIResponse
+//
+//	@Router			/apps/table/{topic}/{number} [delete]
 func (as *AppsHandlerGroup) DeleteApp(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handlers.applications.delete-app"
 

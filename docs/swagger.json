@@ -1,0 +1,1159 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Desky API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "0.0.0.0:3000",
+    "basePath": "/api/v1",
+    "paths": {
+        "/apps/table": {
+            "get": {
+                "description": "Showing apps table with their info",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "ShowTable",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AppsTable"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/apps/table/{topic}": {
+            "post": {
+                "description": "Adding app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "AppendApp",
+                "parameters": [
+                    {
+                        "description": "app params",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AppDetails"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/apps/table/{topic}/{number}": {
+            "delete": {
+                "description": "Deleting app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "DeleteApp",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pve/sessions": {
+            "get": {
+                "description": "Proxmox sessions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pve"
+                ],
+                "summary": "Sessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/nodes.NodeUnit"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pve/{session}/{node}/apt/update": {
+            "post": {
+                "description": "update proxmox apt packages",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pve"
+                ],
+                "summary": "AptUpdate",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node Name",
+                        "name": "node",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pve/{session}/{node}/apt/updates": {
+            "get": {
+                "description": "getting apt proxmox update list",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pve"
+                ],
+                "summary": "AptUpdates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node Name",
+                        "name": "node",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/nodes.AptUpdates"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pve/{session}/{node}/devices": {
+            "get": {
+                "description": "Getting ve devices list information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pve"
+                ],
+                "summary": "DeviceList",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node Name",
+                        "name": "node",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.DevicesList"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pve/{session}/{node}/devices/{vmid}/{command}": {
+            "post": {
+                "description": "execute device command",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pve"
+                ],
+                "summary": "DeviceCommand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node Name",
+                        "name": "node",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "VMID",
+                        "name": "vmid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "stop",
+                            "start",
+                            "shutdown",
+                            "suspend",
+                            "resume"
+                        ],
+                        "type": "string",
+                        "description": "VM Command",
+                        "name": "command",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Uninplemented",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pve/{session}/{node}/disks": {
+            "get": {
+                "description": "getting disk list",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pve"
+                ],
+                "summary": "DiskList",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node Name",
+                        "name": "node",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/nodes.DisksInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pve/{session}/{node}/disks/smart": {
+            "get": {
+                "description": "getting disk SMART info",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pve"
+                ],
+                "summary": "smart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node Name",
+                        "name": "node",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "device path",
+                        "name": "dev",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/nodes.Smart"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pve/{session}/{node}/status": {
+            "get": {
+                "description": "Retrieve detailed status information for a Proxmox VE node, including load, filesystem, RAM, CPU, and uptime.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pve"
+                ],
+                "summary": "NodeStatus",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node Name",
+                        "name": "node",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.PVENodeStatus"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/info": {
+            "get": {
+                "description": "host information",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "HostInfo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/system.HostInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/stats": {
+            "get": {
+                "description": "host information ws interval update = 5s",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "HostStatsWS",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/sys.StatsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/systemd/status": {
+            "get": {
+                "description": "units systemd list",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "SystemdUnits",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Page number for pagination (optional)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Number of items per page (optional)",
+                        "name": "count",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/system.SystemdUnit"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/systemd/{service}/{command}": {
+            "post": {
+                "description": "execute device command",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "UnitCommand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "systemd command",
+                        "name": "command",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "systemd service",
+                        "name": "service",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Uninplemented",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.APIErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {}
+            }
+        },
+        "handlers.APIResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {}
+            }
+        },
+        "models.AppDetails": {
+            "type": "object",
+            "required": [
+                "description",
+                "icon",
+                "link",
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "nextcloud self-hosted cloud"
+                },
+                "icon": {
+                    "type": "string",
+                    "example": "nextcloud"
+                },
+                "link": {
+                    "type": "string",
+                    "example": "https://nextcloud.lan"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 3,
+                    "example": "Nextcloud"
+                }
+            }
+        },
+        "models.AppsTable": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/definitions/models.AppDetails"
+                }
+            }
+        },
+        "models.CPUData": {
+            "type": "object",
+            "properties": {
+                "cores": {
+                    "type": "integer",
+                    "example": 6
+                },
+                "frequency": {
+                    "type": "string",
+                    "example": "4300Mhz"
+                },
+                "load": {
+                    "type": "number",
+                    "example": 13
+                },
+                "model": {
+                    "type": "string",
+                    "example": "5"
+                }
+            }
+        },
+        "models.DevicesList": {
+            "type": "object",
+            "properties": {
+                "lxc": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TypeDevice"
+                    }
+                },
+                "qemu": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TypeDevice"
+                    }
+                }
+            }
+        },
+        "models.FSData": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "integer"
+                },
+                "used": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.PVENodeStatus": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "$ref": "#/definitions/models.CPUData"
+                },
+                "fs": {
+                    "$ref": "#/definitions/models.FSData"
+                },
+                "kernel": {
+                    "type": "string"
+                },
+                "load": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ram": {
+                    "$ref": "#/definitions/models.RAMData"
+                },
+                "uptime": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.RAMData": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "integer",
+                    "example": 7680
+                },
+                "used": {
+                    "type": "integer",
+                    "example": 3220
+                }
+            }
+        },
+        "models.TypeDevice": {
+            "type": "object",
+            "properties": {
+                "cpus": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "netRX": {
+                    "type": "integer"
+                },
+                "netTX": {
+                    "type": "integer"
+                },
+                "pid": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "string"
+                },
+                "uptime": {
+                    "type": "integer"
+                },
+                "vmid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "nodes.AptUpdateUnit": {
+            "type": "object",
+            "properties": {
+                "Arch": {
+                    "type": "string"
+                },
+                "Description": {
+                    "type": "string"
+                },
+                "OldVersion": {
+                    "type": "string"
+                },
+                "Origin": {
+                    "type": "string"
+                },
+                "Package": {
+                    "type": "string"
+                },
+                "Priority": {
+                    "type": "string"
+                },
+                "Section": {
+                    "type": "string"
+                },
+                "Title": {
+                    "type": "string"
+                },
+                "Version": {
+                    "type": "string"
+                }
+            }
+        },
+        "nodes.AptUpdates": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/nodes.AptUpdateUnit"
+                    }
+                }
+            }
+        },
+        "nodes.DiskUnit": {
+            "type": "object",
+            "properties": {
+                "by_id_link": {
+                    "type": "string"
+                },
+                "devpath": {
+                    "type": "string"
+                },
+                "gpt": {
+                    "type": "integer"
+                },
+                "health": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "osdid": {
+                    "type": "integer"
+                },
+                "osdid-list": {},
+                "rpm": {
+                    "type": "integer"
+                },
+                "serial": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "used": {
+                    "type": "string"
+                },
+                "vendor": {
+                    "type": "string"
+                },
+                "wearout": {
+                    "type": "integer"
+                },
+                "wwn": {
+                    "type": "string"
+                }
+            }
+        },
+        "nodes.DisksInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/nodes.DiskUnit"
+                    }
+                }
+            }
+        },
+        "nodes.NodeUnit": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "number"
+                },
+                "disk": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "maxcpu": {
+                    "type": "integer"
+                },
+                "maxdisk": {
+                    "type": "integer"
+                },
+                "maxmem": {
+                    "type": "integer"
+                },
+                "mem": {
+                    "type": "integer"
+                },
+                "node": {
+                    "type": "string"
+                },
+                "ssl_fingerprint": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "uptime": {
+                    "type": "integer"
+                }
+            }
+        },
+        "nodes.Smart": {
+            "type": "object",
+            "properties": {
+                "health": {
+                    "type": "string"
+                },
+                "info": {
+                    "$ref": "#/definitions/nodes.SmartInfo"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "wearout": {
+                    "type": "integer"
+                }
+            }
+        },
+        "nodes.SmartInfo": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "sys.StatsResponse": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "$ref": "#/definitions/system.CPUInfo"
+                },
+                "load": {
+                    "$ref": "#/definitions/system.AverageLoad"
+                },
+                "memory": {
+                    "$ref": "#/definitions/system.RAMInfo"
+                },
+                "temperature": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/system.SensorInfo"
+                    }
+                }
+            }
+        },
+        "system.AverageLoad": {
+            "type": "object",
+            "properties": {
+                "load1": {
+                    "type": "number"
+                },
+                "load15": {
+                    "type": "number"
+                },
+                "load5": {
+                    "type": "number"
+                }
+            }
+        },
+        "system.CPUInfo": {
+            "type": "object",
+            "properties": {
+                "cache": {
+                    "type": "integer"
+                },
+                "coreCount": {
+                    "type": "integer"
+                },
+                "cores": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/system.CpuCore"
+                    }
+                },
+                "load": {
+                    "type": "number"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "threadCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "system.CpuCore": {
+            "type": "object",
+            "properties": {
+                "frequency": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "system.HostInfo": {
+            "type": "object",
+            "properties": {
+                "addrs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "procs": {
+                    "type": "integer"
+                },
+                "uptime": {
+                    "type": "number"
+                },
+                "virt": {
+                    "type": "string"
+                }
+            }
+        },
+        "system.RAMInfo": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "use": {
+                    "type": "number"
+                },
+                "used": {
+                    "type": "integer"
+                }
+            }
+        },
+        "system.SensorInfo": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "number"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "max": {
+                    "type": "number"
+                }
+            }
+        },
+        "system.SystemdUnit": {
+            "type": "object",
+            "properties": {
+                "preset": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "unit_file": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

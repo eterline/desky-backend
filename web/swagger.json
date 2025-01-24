@@ -1,0 +1,96 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Desky API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "0.0.0.0:3000",
+    "basePath": "/api/v1",
+    "paths": {
+        "/users": {
+            "get": {
+                "description": "Showing apps table with their info",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "ShowTable",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AppsTable"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.APIErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {}
+            }
+        },
+        "handlers.APIResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {}
+            }
+        },
+        "models.AppDetails": {
+            "type": "object",
+            "required": [
+                "description",
+                "icon",
+                "link",
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Sample App"
+                },
+                "icon": {
+                    "type": "string",
+                    "example": "Sample App"
+                },
+                "link": {
+                    "type": "string",
+                    "example": "Sample App"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 3,
+                    "example": "Sample App"
+                }
+            }
+        },
+        "models.AppsTable": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/definitions/models.AppDetails"
+                }
+            }
+        }
+    }
+}
