@@ -1,88 +1,53 @@
 package configuration
 
-// ============================= Main app config field =============================
+// ============================= Main app config struct =============================
 type Configuration struct {
-	DevMode  bool           `json:"Development" yaml:"Development" validate:"boolean"`
-	Server   ServerConfig   `json:"Server" yaml:"Server" validate:"required"`
-	Services ServiceMap     `json:"Services" yaml:"Services" validate:"required"`
-	Proxmox  ProxmoxService `json:"Proxmox" yaml:"Proxmox" validate:"required"`
-	Auth     AuthParameters `json:"Authorization" yaml:"Authorization" validate:"required"`
-
-	_ struct{}
+	DevelopEnv bool               `yaml:"dev-env" validate:"boolean"`
+	Server     HTTPServer         `yaml:"HTTP-Server" validate:"required"`
+	Logs       Logging            `yaml:"Logs" validate:"required"`
+	Services   ServicesParameters `yaml:"Services"`
 }
 
-// Authorization config field =============================
+// Server config struct =============================
+type (
+	HTTPServer struct {
+		SSL     SSLParameters `yaml:"SSL"`
+		Address Addr          `yaml:"Address" validate:"required"`
+	}
 
-type AuthParameters struct {
-	Enabled bool `json:"active" yaml:"active" validate:"boolean"`
-	Bcrypt  bool `json:"bcrypt" yaml:"bcrypt" validate:"boolean"`
+	Addr struct {
+		IP   string `yaml:"listen" validate:"required,ip"`
+		Port uint16 `yaml:"port" validate:"required,port"`
+	}
 
-	Username string `json:"username" yaml:"username" validate:"required_if=Enabled true"`
-	Password string `json:"password" yaml:"password" validate:"required_if=Enabled true"`
+	SSLParameters struct {
+		TLS      bool   `yaml:"tls-mode" validate:"boolean"`
+		CertFile string `yaml:"cert-file" validate:"required"`
+		KeyFile  string `yaml:"key-file" validate:"required"`
+	}
+)
+
+// Logging config struct =============================
+type (
+	Logging struct {
+		Enabled bool   `yaml:"enabled" validate:"boolean"`
+		Level   int    `yaml:"level"`
+		Path    string `yaml:"path"`
+	}
+)
+
+// ============================= Services config struct =============================
+
+type ServicesParameters struct {
+	PVE []PVEInstance `yaml:"ProxmoxVE"`
 }
 
-// Server config field =============================
-
+// PVE config struct =============================
 type (
-	// Server configrurations
-	ServerConfig struct {
-		JWTSecret  string                 `json:"JWT-Secret" yaml:"JWT-Secret" validate:"required"`
-		TLS        ServerTLSConfig        `json:"SSL-Mode" yaml:"SSL-Mode"`
-		Connection ServerConnectionConfig `json:"Connection" yaml:"Connection" validate:"required"`
-
-		_ struct{}
-	}
-
-	// HTTPS Presets for web server
-	ServerTLSConfig struct {
-		Enabled     bool   `json:"active" yaml:"active" validate:"boolean"`
-		Key         string `json:"key-file" yaml:"key-file" validate:"omitempty,filepath"`
-		Certificate string `json:"cert-file" yaml:"cert-file" validate:"omitempty,filepath"`
-
-		_ struct{}
-	}
-
-	// Web server parameters.
-	// Listening address of HostName:Port
-	ServerConnectionConfig struct {
-		Addr     string `json:"address" yaml:"address" validate:"required,ip"`
-		Hostname string `json:"host-name" yaml:"host-name"`
-		Port     uint16 `json:"port" yaml:"port" validate:"required,port"`
-
-		_ struct{}
+	PVEInstance struct {
+		Node     string `yaml:"node"`
+		API      string `yaml:"api-url"`
+		Username string `yaml:"username"`
+		Secret   string `yaml:"secret"`
 	}
 )
-
-// Services config field =============================
-
-type (
-	// Abstract service paramaters.
-	// That can be used with APIkey-like using or typical credentials
-	ServiceParams struct {
-		IsActive bool   `json:"active" yaml:"active" validate:"boolean"`
-		ApiURL   string `json:"api-url" yaml:"api-url" validate:"required,url"`
-		UseKeys  bool   `json:"use-api-key" yaml:"use-api-key" validate:"boolean"`
-		Key      string `json:"secret" yaml:"secret" validate:"required_if=UseKeys true"`
-		Username string `json:"login" yaml:"login" validate:"required_if=UseKeys false"`
-		Password string `json:"password" yaml:"password" validate:"required_if=UseKeys false"`
-
-		_ struct{}
-	}
-
-	ServiceMap map[string]ServiceParams
-)
-
-type (
-	ProxmoxService []ProxmoxCredentials
-
-	ProxmoxCredentials struct {
-		SSLCheck bool   `json:"ssl-check" yaml:"ssl-check" validate:"boolean"`
-		ApiURL   string `json:"api-url" yaml:"api-url" validate:"required,url"`
-		Username string `json:"login" yaml:"login"`
-		Password string `json:"password" yaml:"password"`
-
-		_ struct{}
-	}
-)
-
-// Storage config field =============================

@@ -2,66 +2,40 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
-	"github.com/eterline/desky-backend/internal/app"
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/pkg/logger"
 )
 
-var (
-	logTimestamp bool
-	logPath      string
-	genConfig    bool
-	configFile   string
-)
-
 func init() {
-
-	flag.BoolVar(&logTimestamp, "timestamp", false, `Print starting time in log file name.
-With default settings.
-True: 'trace.2022.09.07_12.00.00.log'
-False: 'trace.log'
-	`)
-
-	flag.StringVar(&logPath, "log", "", "Logging file directory.")
-	flag.BoolVar(&genConfig, "generate", false, "Generate new config file: 'config.json'")
-	flag.StringVar(&configFile, "config", "config.json", "Configuration file path.\nCan be: JSON | YAML | YML extension.")
+	flag.BoolFunc("gen", "to generate configuration file", func(s string) error {
+		if err := configuration.GenerateFile("config.yaml"); err != nil {
+			panic(err)
+		}
+		os.Exit(0)
+		return nil
+	})
 
 	flag.Parse()
 
-	if genConfig {
-		if err := configuration.GenerateFile("config.json"); err != nil {
-			panic(err)
-		}
-		log.Printf("config file generated: exiting from program")
-		os.Exit(0)
-	}
+	configuration.MustConfig("config.yaml")
 }
 
-//	@title		Desky API
-//	@version	1.0
-
-//	@host		0.0.0.0:3000
-//	@BasePath	/api/v1
+// @title		Desky API test
+// @version	1.0
+// @BasePath	/api/v1
 func main() {
-	if err := configuration.Init(configFile); err != nil {
-		panic(err)
+	if err := logger.InitLogger(
+		logger.WithPretty(),
+		logger.WithPath(""),
+	); err != nil {
+		log.Println(err)
 	}
 
-	conf := configuration.GetConfig()
+	c := configuration.GetConfig()
 
-	logger.InitLogger(
-		logger.WithEnv(func() logger.EnvValue {
-			if conf.DevMode {
-				return logger.DEVELOP
-			}
-			return logger.PRODUCTION
-		}()),
-		logger.WithPretty(),
-		logger.WithPath(logPath),
-	)
-
-	app.Execute()
+	fmt.Println(c.SSL().CertFile)
 }

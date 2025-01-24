@@ -35,7 +35,10 @@ func InitLogger(options ...LoggerOptionFunc) error {
 
 	l := logrus.New()
 
-	l.Formatter = returnFormatter(opts)
+	if opts.isFormat {
+		l.Formatter = returnFormatter(opts)
+	}
+
 	HookTargets = append(HookTargets, logFile, os.Stdout)
 
 	l.SetOutput(io.Discard)

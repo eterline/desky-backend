@@ -1,32 +1,24 @@
 .PHONY: build run
 
-app = desky-backend
-test-app = desky-backend-test
+app = application
 
 build:
 	go build -v ./cmd/$(app)/...
 
 
 run: del build
-	./$(app) -log logging
+	./$(app)
 
 clean:
 	go mod tidy
 	go clean
 
 start:
-	./$(app) -log logging
+	./$(app)
 
 del:
 	rm ./$(app)* || echo "file didn't exists"
 	rm ./trace*         || echo "file didn't exists"
-
-
-build-test:
-	go build -v ./cmd/$(app-test)/...
-
-test: build-test
-	./$(app-test)
 
 swag:
 	swag init -g ./cmd/$(app)/main.go

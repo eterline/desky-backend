@@ -1,0 +1,26 @@
+dev-env: false
+
+HTTP-Server:
+    SSL:
+        tls-mode: false
+        cert-file: ""
+        key-file: ""
+    Address:
+        listen: 10.192.10.1
+        port: 3000
+
+Logs:
+    enabled: true
+    level: 0
+    path: ./logs
+    
+Services:
+    ProxmoxVE:
+        - node: node-1
+          api-url: https://node-1:8006/api/json
+          username: root
+          secret: example_key
+        - node: node-2
+          api-url: https://node-2:8006/api/json
+          username: root
+          secret: example_key

@@ -3,13 +3,10 @@ package routing
 import (
 	"fmt"
 
-	_ "github.com/eterline/desky-backend/docs"
 	"github.com/eterline/desky-backend/internal/api/handlers"
 	"github.com/eterline/desky-backend/internal/api/handlers/applications"
 	"github.com/eterline/desky-backend/internal/api/handlers/frontend"
-	"github.com/eterline/desky-backend/internal/api/handlers/proxmox"
 	"github.com/eterline/desky-backend/internal/api/handlers/sys"
-	mws "github.com/eterline/desky-backend/internal/api/middlewares"
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/services/apps/appsfile"
 	"github.com/eterline/desky-backend/internal/services/authorization"
@@ -18,11 +15,6 @@ import (
 	"github.com/go-chi/chi"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
-
-type APIRouting struct {
-	BasePath string
-	MW       *mws.MiddleWare
-}
 
 func InitAPIRouting(ver int) *APIRouting {
 	return &APIRouting{
