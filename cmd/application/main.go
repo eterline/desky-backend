@@ -1,41 +1,51 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/eterline/desky-backend/internal/application"
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/pkg/logger"
 )
 
 func init() {
-	flag.BoolFunc("gen", "to generate configuration file", func(s string) error {
-		if err := configuration.GenerateFile("config.yaml"); err != nil {
+	flag.BoolFunc("migrate", "To migrate default parameters to configuration file.", func(s string) error {
+		if err := configuration.Migrate(configuration.FileName, 0644); err != nil {
 			panic(err)
 		}
+		fmt.Println("Migration: default parameters migrated to file successfully:", configuration.FileName)
 		os.Exit(0)
 		return nil
 	})
 
+	c := flag.String("config", configuration.FileName, "Set configuration file path.")
+
 	flag.Parse()
 
-	configuration.MustConfig("config.yaml")
+	if err := configuration.Init(*c); err != nil {
+		panic(err)
+	}
+
+	if err := logs(); err != nil {
+		panic(err)
+	}
 }
 
 // @title		Desky API test
 // @version	1.0
 // @BasePath	/api/v1
 func main() {
-	if err := logger.InitLogger(
-		logger.WithPretty(),
-		logger.WithPath(""),
-	); err != nil {
-		log.Println(err)
-	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	c := configuration.GetConfig()
+	application.Exec(ctx)
+}
 
-	fmt.Println(c.SSL().CertFile)
+func logs() error {
+	return logger.InitLogger(logger.WithPretty())
 }

@@ -1,25 +1,28 @@
 package configuration
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	instance *Configuration = nil
-)
+var instance *Configuration
 
 func GetConfig() *Configuration {
+
+	if instance == nil {
+		return DefaultParameters
+	}
 	return instance
 }
 
-func MustConfig(path string) {
+func Init(path string) error {
 
 	file, err := os.ReadFile(path)
 	if err != nil {
-		panic(ErrRead(err))
+		return ErrRead(err)
 	}
 
 	config := &Configuration{}
@@ -35,33 +38,46 @@ func MustConfig(path string) {
 		break
 
 	default:
-		panic(ErrUnknownExt)
+		if err != nil {
+			return ErrUnknownExt
+		}
 	}
 
 	if err != nil {
-		panic(ErrRead(err))
+		return ErrRead(err)
 	}
 
 	instance = config
+
+	return nil
 }
 
-func GenerateFile(name string) error {
+func Migrate(fileName string, filePermit fs.FileMode) error {
 
-	file, err := os.OpenFile(name, os.O_CREATE|os.O_RDWR, 0644)
+	file, err := os.OpenFile(
+		fileName,
+		os.O_CREATE|os.O_RDWR,
+		filePermit,
+	)
+
 	defer file.Close()
 
 	if err != nil {
-		return err
+		return ErrMigration(err)
 	}
 
 	content, err := yaml.Marshal(DefaultParameters)
 	if err != nil {
-		return err
+		return ErrMigration(err)
 	}
 
 	if _, err := file.Write(content); err != nil {
-		return err
+		return ErrMigration(err)
 	}
 
+	return nil
+}
+
+func (c *Configuration) Valid() error {
 	return nil
 }

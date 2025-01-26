@@ -11,6 +11,7 @@ type Configuration struct {
 // Server config struct =============================
 type (
 	HTTPServer struct {
+		Name    string        `yaml:Name"`
 		SSL     SSLParameters `yaml:"SSL"`
 		Address Addr          `yaml:"Address" validate:"required"`
 	}
@@ -30,16 +31,17 @@ type (
 // Logging config struct =============================
 type (
 	Logging struct {
-		Enabled bool   `yaml:"enabled" validate:"boolean"`
-		Level   int    `yaml:"level"`
-		Path    string `yaml:"path"`
+		Level  int    `yaml:"level"`
+		Path   string `yaml:"path"`
+		Pretty bool   `yaml:"formatted" validate:"boolean"`
 	}
 )
 
 // ============================= Services config struct =============================
 
 type ServicesParameters struct {
-	PVE []PVEInstance `yaml:"ProxmoxVE"`
+	PVE    []PVEInstance    `yaml:"ProxmoxVE"`
+	Docker []DockerInstance `yaml:"Docker"`
 }
 
 // PVE config struct =============================
@@ -49,5 +51,10 @@ type (
 		API      string `yaml:"api-url"`
 		Username string `yaml:"username"`
 		Secret   string `yaml:"secret"`
+	}
+
+	DockerInstance struct {
+		Name string `yaml:"name"`
+		API  string `yaml:"api"`
 	}
 )

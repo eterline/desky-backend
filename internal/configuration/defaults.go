@@ -1,5 +1,7 @@
 package configuration
 
+var FileName string = "settings.yaml"
+
 var DefaultParameters = &Configuration{
 	DevelopEnv: false,
 
@@ -18,9 +20,8 @@ var DefaultParameters = &Configuration{
 	},
 
 	Logs: Logging{
-		Enabled: true,
-		Level:   0,
-		Path:    "./logs",
+		Level: 0,
+		Path:  "./logs",
 	},
 
 	Services: ServicesParameters{
