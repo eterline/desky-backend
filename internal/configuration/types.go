@@ -6,6 +6,7 @@ type Configuration struct {
 	Server     HTTPServer         `yaml:"HTTP-Server" validate:"required"`
 	Logs       Logging            `yaml:"Logs" validate:"required"`
 	Services   ServicesParameters `yaml:"Services"`
+	DB         DatabaseConfig     `yaml:"DataBase"`
 }
 
 // Server config struct =============================
@@ -56,5 +57,14 @@ type (
 	DockerInstance struct {
 		Name string `yaml:"name"`
 		API  string `yaml:"api"`
+	}
+)
+
+// ============================= Db config struct =============================
+
+type (
+	DatabaseConfig struct {
+		File string `yaml:"file"`
+		Sync bool   `yaml:"sync"`
 	}
 )

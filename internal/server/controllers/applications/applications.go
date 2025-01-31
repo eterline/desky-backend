@@ -40,6 +40,7 @@ func (as *AppsHandlerGroup) ShowTable(w http.ResponseWriter, r *http.Request) (o
 	op = "handler.applications.show-table"
 
 	t, err := as.Apps.Table()
+
 	if err == nil {
 		handler.WriteJSON(w, http.StatusOK, t)
 	}

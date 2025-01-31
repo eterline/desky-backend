@@ -2,61 +2,71 @@ package server
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net/http"
 
-	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/server/router"
-	"github.com/eterline/desky-backend/internal/utils"
-	"github.com/eterline/desky-backend/pkg/logger"
-	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Logger = nil
+type Server struct {
+	srv  *http.Server
+	cert string
+	key  string
+}
 
-func Setup(config *configuration.Configuration) *http.Server {
-	log = logger.ReturnEntry().Logger
-	defer logStart(config)
-
-	tls := func() *tls.Config {
-		if config.SSL().TLS {
-			return &tls.Config{
-				ServerName: config.Server.Name,
-			}
-		}
-		return nil
-	}()
-
-	return &http.Server{
-		Addr:      config.ServerSocket(),
-		Handler:   ConfigRoutes(),
-		TLSConfig: tls,
+// New - create new server object
+func New(
+	socket string,
+	cert string, key string,
+	serverName string,
+) *Server {
+	return &Server{
+		srv: &http.Server{
+			Addr: socket,
+			TLSConfig: &tls.Config{
+				ServerName: serverName,
+			},
+		},
+		cert: cert,
+		key:  key,
 	}
+}
+
+// Router - set up server Handler router
+func (s *Server) Router(r http.Handler) {
+	s.srv.Handler = r
+}
+
+func (s *Server) Run(ssl bool) error {
+
+	var err error
+
+	if s.srv.Handler == nil {
+		panic("couldn't start server without handler")
+	}
+
+	if ssl {
+		err = s.srv.ListenAndServeTLS(s.cert, s.key)
+	} else {
+		err = s.srv.ListenAndServe()
+	}
+
+	if err == nil || err == http.ErrServerClosed {
+		return nil
+	}
+	return err
+}
+
+// Stop - stop the http server
+func (s *Server) Stop() error {
+	return s.srv.Close()
 }
 
 func ConfigRoutes() (r *router.RouterService) {
 	r = router.NewRouterService()
 
 	public(r)
-	log.Info("public routes configured")
 
 	r.MountWith("/api", api())
-	log.Info("api routes configured")
 
 	return
-}
-
-func logStart(config *configuration.Configuration) {
-	log.Debugf("init server with config: %s", utils.PrettyString(config.Server))
-	log.Infof("https mode: %v", config.SSL().TLS)
-
-	var addr string = config.ServerSocket()
-
-	if config.SSL().TLS {
-		addr = fmt.Sprintf("https://%s", addr)
-	} else {
-		addr = fmt.Sprintf("http://%s", addr)
-	}
-
-	log.Infof("server listen on: %s", addr)
 }
