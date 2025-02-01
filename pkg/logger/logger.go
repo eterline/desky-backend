@@ -3,6 +3,7 @@ package logger
 import (
 	"io"
 	"os"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 )
@@ -14,8 +15,12 @@ const (
 	PRODUCTION
 )
 
-var entry *logrus.Entry
-var HookTargets []io.Writer
+var (
+	entry       *logrus.Entry
+	HookTargets []io.Writer
+
+	once sync.Once
+)
 
 type LogWorker struct {
 	*logrus.Entry
@@ -28,7 +33,7 @@ func ReturnEntry() LogWorker {
 func InitLogger(options ...LoggerOptionFunc) error {
 	opts := mustOptions(options...)
 
-	logFile, err := os.OpenFile(returnName(opts), os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
+	logFile, err := os.OpenFile(returnName(opts), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -49,9 +54,14 @@ func InitLogger(options ...LoggerOptionFunc) error {
 
 	l.SetLevel(opts.level)
 	l.SetReportCaller(true)
-	entry = logrus.NewEntry(l)
 
-	l.Debugf("logger initialized with log level: %s and env: %s", opts.level, opts.env)
+	once.Do(func() {
+		entry = logrus.NewEntry(l)
+		l.Debugf(
+			"logger initialized with log level: %s and env: %s",
+			opts.level, opts.env,
+		)
+	})
 
 	return nil
 }

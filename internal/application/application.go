@@ -21,25 +21,49 @@ func Exec(
 ) {
 	log = logger.ReturnEntry().Logger
 	defer func() {
-		stopFunc()
 		log.Info("service exit")
+		stopFunc()
 	}()
 
-	db := dbInitialize(config.DB.File)
-	server := server.New(
+	if ok := storage.TestFile(config.DB.File); !ok {
+		config.DB.File = storage.DefaultName
+	}
+
+	db := storage.New(config.DB.File)
+	log.Infof("db initialized in file: %s", config.DB.File)
+
+	if err := db.Connect(); err != nil {
+		log.Panicf("db connect error: %s", err)
+	}
+	log.Infof("db connected to file: %s", config.DB.File)
+
+	ctx = context.WithValue(ctx, "database", db)
+
+	if err := db.MigrateTables(); err != nil {
+		panic(err)
+	}
+	log.Infof("db migrated to: %s", config.DB.File)
+
+	srv := server.New(
 		config.ServerSocket(),
 		config.SSL().CertFile,
 		config.SSL().KeyFile,
-		"",
+		config.Server.Name,
 	)
 
-	go func() {
-		log.Infof("server start at: %s", config.ServerSocket())
+	router := server.ConfigRoutes(ctx, config)
+	router.Get("/config", PreferencesHandler(false, true))
+	router.Get("/health", HealthHandler)
 
-		if err := server.Run(config.SSL().TLS); err != nil {
+	srv.Router(router)
+
+	go func() {
+		log.Infof("server start at: %s", config.URLString())
+		defer log.Info("server closed")
+
+		if err := srv.Run(config.SSL().TLS); err != nil {
 			log.Errorf("server running error: %s", err)
 		}
-		log.Info("server closed")
 	}()
 
 	<-ctx.Done()
@@ -47,30 +71,37 @@ func Exec(
 	if err := db.Close(); err != nil {
 		log.Errorf("db close error: %s", err.Error())
 	}
-	if err := server.Stop(); err != nil {
+	if err := srv.Stop(); err != nil {
 		log.Errorf("server close error: %s", err.Error())
 	}
 }
 
-func dbInitialize(dbFile string) *storage.DB {
+// a, err := agentclient.Reg("http://10.192.10.100:4000/api", "")
+// if err != nil {
+// 	panic(err)
+// }
 
-	if dbFile == "" {
-		dbFile = storage.DefaultName
-	}
+// data, ok := a.Info()
+// if !ok {
+// 	panic(ok)
+// }
 
-	db := storage.InitStorage(dbFile)
-	log.Infof("db initialized in file: %s", dbFile)
+// mon := agentmon.New()
+// mon.AddSession(a, data.Hostname, data.HostID, "http://10.192.10.100:4000/api")
 
-	if err := db.MigrateTables(); err != nil {
-		panic(err)
-	}
-	log.Infof("db migrated to: %s", dbFile)
+// i := mon.Pool()
 
-	err := db.Connect()
-	if err != nil {
-		panic(err)
-	}
-	log.Infof("db connected to file: %s", dbFile)
+// go func() {
+// 	for {
+// 		select {
+// 		case data := <-i:
+// 			fmt.Println(data)
+// 		}
+// 	}
 
-	return db
-}
+// }()
+
+// fmt.Println(utils.PrettyString(mon.List()))
+
+// <-ctx.Done()
+// mon.StopPooling()

@@ -72,6 +72,16 @@ func WithEnv(env EnvValue) LoggerOptionFunc {
 	}
 }
 
+func WithDevEnvBool(value bool) LoggerOptionFunc {
+	return func(o *LoggerOptions) {
+		if value {
+			o.level = logrus.TraceLevel
+			return
+		}
+		o.level = logrus.InfoLevel
+	}
+}
+
 func WithLevel(lvl string) LoggerOptionFunc {
 	return func(o *LoggerOptions) {
 		if l, err := logrus.ParseLevel(strings.ToLower(lvl)); err == nil {
@@ -142,6 +152,10 @@ func returnName(opts *LoggerOptions) (name string) {
 		)
 	} else {
 		name = fmt.Sprintf("%s.log", opts.filename)
+	}
+
+	if opts.path != "" {
+		name = filepath.Join(opts.path, name)
 	}
 
 	return

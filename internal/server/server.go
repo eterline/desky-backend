@@ -3,8 +3,6 @@ package server
 import (
 	"crypto/tls"
 	"net/http"
-
-	"github.com/eterline/desky-backend/internal/server/router"
 )
 
 type Server struct {
@@ -59,14 +57,4 @@ func (s *Server) Run(ssl bool) error {
 // Stop - stop the http server
 func (s *Server) Stop() error {
 	return s.srv.Close()
-}
-
-func ConfigRoutes() (r *router.RouterService) {
-	r = router.NewRouterService()
-
-	public(r)
-
-	r.MountWith("/api", api())
-
-	return
 }

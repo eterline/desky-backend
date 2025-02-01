@@ -16,7 +16,11 @@ type DB struct {
 	config *gorm.Config
 }
 
-func InitStorage(name string) *DB {
+func TestFile(file string) bool {
+	return file != ""
+}
+
+func New(name string) *DB {
 	return &DB{
 		name: name,
 		DB:   nil,

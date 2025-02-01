@@ -1,57 +1,80 @@
 package server
 
 import (
+	"context"
+
 	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/repository"
+	"github.com/eterline/desky-backend/internal/repository/storage"
+	"github.com/eterline/desky-backend/internal/server/controllers/applications"
 	"github.com/eterline/desky-backend/internal/server/controllers/frontend"
-	"github.com/eterline/desky-backend/internal/server/controllers/providers"
+	"github.com/eterline/desky-backend/internal/server/controllers/monitoring"
 	"github.com/eterline/desky-backend/internal/server/controllers/sys"
 	"github.com/eterline/desky-backend/internal/server/router"
-	"github.com/eterline/desky-backend/internal/services/provider"
+	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
+	"github.com/eterline/desky-backend/internal/services/apps/appsdb"
 	"github.com/eterline/desky-backend/internal/services/system"
+	agentclient "github.com/eterline/desky-backend/pkg/agent-client"
+	"github.com/eterline/desky-backend/pkg/logger"
+	"github.com/sirupsen/logrus"
 )
 
-// public - setting up public routes
-func public(rt *router.RouterService) {
+var log *logrus.Logger
+
+func ConfigRoutes(
+	ctx context.Context,
+	c *configuration.Configuration,
+) (r *router.RouterService) {
+	r = router.NewRouterService()
+
+	log = logger.ReturnEntry().Logger
+
 	f := frontend.Init()
 
-	rt.Get("/", router.InitController(f.HTML))
-	rt.Get("/config", router.InitController(f.Assets))
+	r.Get("/", router.InitController(f.HTML))
+	r.Get("/assets/*", router.InitController(f.Assets))
+	r.Get("/static/*", router.InitController(f.Static))
+	r.Get("/wallpaper/*", router.InitController(f.WallpaperHandle))
 
-	rt.Get("/assets/*", router.InitController(f.Assets))
-	rt.Get("/static/*", router.InitController(f.Static))
-	rt.Get("/wallpaper/*", router.InitController(f.WallpaperHandle))
+	r.MountWith("/api", api(ctx, c))
+
+	return
 }
 
 // api - setting up api routes
-func api() (rt *router.RouterService) {
+func api(
+	ctx context.Context,
+	c *configuration.Configuration,
+) (rt *router.RouterService) {
 	rt = router.NewRouterService()
 
-	// rt.Mount("/apps", appsControllers())
+	rt.Mount("/apps", appsControllers(ctx))
 	rt.Mount("/system", systemControllers())
-	rt.Mount("/provide", providersControllers())
+	rt.Mount("/agent", agentControllers(ctx, c))
+	// rt.Mount("/provide", providersControllers())
 
 	return
 }
 
 // ================== Setup controller groups ==================
 
-// func appsControllers() (rt *router.RouterService) {
+func appsControllers(ctx context.Context) (rt *router.RouterService) {
 
-// 	repos := repository.NewAppsRepository(database)
-// 	a := appsdb.NewAppService(repos)
+	db := ctx.Value("database").(*storage.DB)
 
-// 	srv := applications.Init(a)
+	repos := repository.NewAppsRepository(db.DB)
+	a := appsdb.NewAppService(repos)
 
-// 	rt = router.MakeSubroute(
-// 		router.NewHandler(router.GET, "/table", srv.ShowTable),
-// 		router.NewHandler(router.POST, "/table/{topic}", srv.AppendApp),
-// 		router.NewHandler(router.DELETE, "/table/{topic}/{number}", srv.DeleteApp),
-// 	)
+	srv := applications.Init(a)
 
-// 	log.Debug("apps controllers registered")
+	rt = router.MakeSubroute(
+		router.NewHandler(router.GET, "/table", srv.ShowTable),
+		router.NewHandler(router.POST, "/table/{topic}", srv.AppendApp),
+		router.NewHandler(router.DELETE, "/table/{topic}/{number}", srv.DeleteApp),
+	)
 
-// 	return
-// }
+	return
+}
 
 func systemControllers() (rt *router.RouterService) {
 
@@ -68,22 +91,52 @@ func systemControllers() (rt *router.RouterService) {
 	return
 }
 
-func providersControllers() (rt *router.RouterService) {
+func agentControllers(ctx context.Context, c *configuration.Configuration) (rt *router.RouterService) {
 
-	config := configuration.GetConfig()
+	agents := agentmon.New(ctx)
 
-	pvs := providers.Init()
+	for _, conf := range c.Services.DeskyAgent {
 
-	pvs.Register(
-		providers.PVE,
-		provider.NewProxmoxProvider(config.Services),
-	)
+		session, err := agentclient.Reg(conf.API, conf.Token)
+		if err != nil {
+			log.Errorf("agent init error: %s", err.Error())
+		}
+
+		data, ok := session.Info()
+
+		if ok {
+			agents.AddSession(session, data.Hostname, data.HostID, conf.API)
+			log.Infof("agent init: %s", conf.API)
+			continue
+		}
+		log.Errorf("agent init error: %s", conf.API)
+	}
+
+	mon := monitoring.Init(ctx, agents)
 
 	rt = router.MakeSubroute(
-		router.NewHandler(router.GET, "/{service}", pvs.ServiceSessions),
-		router.NewHandler(router.POST, "/{service}", pvs.ServiceSessions),
-		router.NewHandler(router.DELETE, "/{service}", pvs.ServiceSessions),
+		router.NewHandler(router.GET, "/monitor", mon.Monitor),
 	)
 
 	return
 }
+
+// func providersControllers() (rt *router.RouterService) {
+
+// 	config := configuration.GetConfig()
+
+// 	pvs := providers.Init()
+
+// 	pvs.Register(
+// 		providers.PVE,
+// 		provider.NewProxmoxProvider(config.Services),
+// 	)
+
+// 	rt = router.MakeSubroute(
+// 		router.NewHandler(router.GET, "/{service}", pvs.ServiceSessions),
+// 		router.NewHandler(router.POST, "/{service}", pvs.ServiceSessions),
+// 		router.NewHandler(router.DELETE, "/{service}", pvs.ServiceSessions),
+// 	)
+
+// 	return
+// }

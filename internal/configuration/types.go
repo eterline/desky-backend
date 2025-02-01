@@ -2,27 +2,26 @@ package configuration
 
 // ============================= Main app config struct =============================
 type Configuration struct {
-	DevelopEnv bool               `yaml:"dev-env" validate:"boolean"`
-	Server     HTTPServer         `yaml:"HTTP-Server" validate:"required"`
-	Logs       Logging            `yaml:"Logs" validate:"required"`
-	Services   ServicesParameters `yaml:"Services"`
-	DB         DatabaseConfig     `yaml:"DataBase"`
+	DevelopEnv bool     `yaml:"dev-env" validate:"boolean"`
+	DB         DB       `yaml:"DB"`
+	Server     Server   `yaml:"HTTP-Server" validate:"required"`
+	Services   Services `yaml:"Services"`
 }
 
 // Server config struct =============================
 type (
-	HTTPServer struct {
-		Name    string        `yaml:Name"`
-		SSL     SSLParameters `yaml:"SSL"`
-		Address Addr          `yaml:"Address" validate:"required"`
+	Server struct {
+		Name    string     `yaml:Name"`
+		Address ServerAddr `yaml:"Address" validate:"required"`
+		SSL     ServerSSL  `yaml:"SSL"`
 	}
 
-	Addr struct {
+	ServerAddr struct {
 		IP   string `yaml:"listen" validate:"required,ip"`
 		Port uint16 `yaml:"port" validate:"required,port"`
 	}
 
-	SSLParameters struct {
+	ServerSSL struct {
 		TLS      bool   `yaml:"tls-mode" validate:"boolean"`
 		CertFile string `yaml:"cert-file" validate:"required"`
 		KeyFile  string `yaml:"key-file" validate:"required"`
@@ -30,24 +29,18 @@ type (
 )
 
 // Logging config struct =============================
-type (
-	Logging struct {
-		Level  int    `yaml:"level"`
-		Path   string `yaml:"path"`
-		Pretty bool   `yaml:"formatted" validate:"boolean"`
-	}
-)
 
 // ============================= Services config struct =============================
 
-type ServicesParameters struct {
-	PVE    []PVEInstance    `yaml:"ProxmoxVE"`
-	Docker []DockerInstance `yaml:"Docker"`
+type Services struct {
+	Proxmox    []ProxmoxInstance `yaml:"Proxmox"`
+	Docker     []DockerInstance  `yaml:"Docker"`
+	DeskyAgent []DeskyAgent      `yaml:"DeskyAgent"`
 }
 
-// PVE config struct =============================
+// Services config struct =============================
 type (
-	PVEInstance struct {
+	ProxmoxInstance struct {
 		Node     string `yaml:"node"`
 		API      string `yaml:"api-url"`
 		Username string `yaml:"username"`
@@ -58,12 +51,17 @@ type (
 		Name string `yaml:"name"`
 		API  string `yaml:"api"`
 	}
+
+	DeskyAgent struct {
+		API   string `yaml:"api"`
+		Token string `yaml:"token"`
+	}
 )
 
 // ============================= Db config struct =============================
 
 type (
-	DatabaseConfig struct {
+	DB struct {
 		File string `yaml:"file"`
 		Sync bool   `yaml:"sync"`
 	}

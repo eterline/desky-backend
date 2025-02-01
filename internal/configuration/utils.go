@@ -1,6 +1,10 @@
 package configuration
 
-import "github.com/eterline/desky-backend/pkg/iptool"
+import (
+	"fmt"
+
+	"github.com/eterline/desky-backend/pkg/iptool"
+)
 
 func (c *Configuration) ServerSocket() string {
 
@@ -17,6 +21,19 @@ func (c *Configuration) ServerSocket() string {
 	return sock.String()
 }
 
-func (c *Configuration) SSL() SSLParameters {
+func (c *Configuration) SSL() ServerSSL {
 	return c.Server.SSL
+}
+
+func (c *Configuration) URLString() string {
+
+	var proto string
+
+	if c.SSL().TLS {
+		proto = "https"
+	} else {
+		proto = "http"
+	}
+
+	return fmt.Sprintf("%s://%s", proto, c.ServerSocket())
 }
