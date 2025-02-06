@@ -42,7 +42,7 @@ func Make(url string, opts *RequestOptions) (*RequestProvide, error) {
 
 	if opts != nil && len(opts.Headers) > 0 {
 		for key, header := range opts.Headers {
-			r.Header.Set(key, header)
+			r.Header.Add(key, header)
 		}
 	}
 

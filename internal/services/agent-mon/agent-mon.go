@@ -11,6 +11,7 @@ func New(ctx context.Context) *AgentMonitorService {
 	return &AgentMonitorService{
 		sessions: make([]Session, 0),
 		ctx:      ctx,
+		done:     false,
 	}
 }
 
@@ -30,7 +31,6 @@ func (a *AgentMonitorService) List() (data []models.SessionCredentials) {
 		data[i] = models.SessionCredentials{
 			Hostname: s.Hostname,
 			ID:       s.ID,
-			Valid:    s.IsValid(),
 			URL:      s.URL,
 		}
 	}
@@ -55,40 +55,36 @@ func (a *AgentMonitorService) Pool() (ch chan models.FetchedResponse, cancel con
 
 			case <-tick.C:
 				for _, session := range a.sessions {
-					fetchAllToChannel(session, ch)
+					go func(ch chan<- models.FetchedResponse) {
+						ch <- fetchAll(session)
+					}(ch)
 				}
+
 			}
 		}
 
 	}(ch)
 
-	return ch, cancel
+	return
 }
 
-func fetchAll(s Session) (data models.FetchedResponse) {
+func fetchAll(s Session) models.FetchedResponse {
 
-	data = models.FetchedResponse{
-		SessionCredentials: models.SessionCredentials{
-			Hostname: s.Hostname,
-			ID:       s.ID,
-			Valid:    s.IsValid(),
-		},
+	data := models.FetchedResponse{
+		ID:   s.ID,
 		Data: make(map[string]any),
-	}
-
-	if !s.IsValid() {
-		return
 	}
 
 	for _, export := range models.ExporterList {
 		info, err := s.Parameter(export)
-		if err != nil {
+		if info == nil || err != nil {
 			continue
 		}
 
 		data.Data[export] = info
 	}
-	return
+
+	return data
 }
 
 func fetchAllToChannel(s Session, ch chan<- models.FetchedResponse) {

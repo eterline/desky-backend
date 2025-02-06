@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/server/router/handler"
 	"github.com/eterline/desky-backend/internal/services/apps/appsfile"
+	"github.com/eterline/desky-backend/internal/services/router/handler"
 )
 
 type AppsService interface {
@@ -69,18 +69,19 @@ func (as *AppsHandlerGroup) ShowTable(w http.ResponseWriter, r *http.Request) (o
 //	@Router			/apps/table/{topic} [post]
 func (as *AppsHandlerGroup) AppendApp(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handler.applications.append-app"
-	data := models.AppDetails{}
 
 	q, err := handler.ParseURLParameters(r, handler.StrOpts("topic"))
 	if err != nil {
 		return op, err
 	}
 
-	if err = handler.DecodeRequest(r, &data); err != nil {
+	data := new(models.AppDetails)
+
+	if err = handler.DecodeRequest(r, data); err != nil {
 		return op, err
 	}
 
-	if err = as.Apps.Append(q.GetStr("topic"), data); err == nil {
+	if err = as.Apps.Append(q.GetStr("topic"), *data); err == nil {
 		handler.StatusCreated(w, "app added")
 	}
 

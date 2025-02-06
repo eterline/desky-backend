@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/server/controllers/files"
-	"github.com/eterline/desky-backend/internal/server/router/handler"
+	"github.com/eterline/desky-backend/internal/services/router/handler"
 )
 
 type FrontendHandlerGroup struct {

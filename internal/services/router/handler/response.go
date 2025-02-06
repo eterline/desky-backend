@@ -59,10 +59,10 @@ func InvalidContentTypeResponse() *APIErrorResponse {
 }
 
 // Create error StatusBadRequest (400) response
-func InvalidJSONResponse() *APIErrorResponse {
+func ErrorBadRequest() *APIErrorResponse {
 	return NewErrorResponse(
 		http.StatusBadRequest,
-		fmt.Errorf("uncorrect JSON data"),
+		fmt.Errorf("uncorrect request data"),
 	)
 }
 
@@ -94,5 +94,26 @@ func NotFoundPageResponse() *APIErrorResponse {
 	return NewErrorResponse(
 		http.StatusNotFound,
 		fmt.Errorf("route controller not found"),
+	)
+}
+
+func NoContentResponse() *APIErrorResponse {
+	return NewErrorResponse(
+		http.StatusNoContent,
+		fmt.Errorf("content not exists"),
+	)
+}
+
+func StatusUnauthorized() *APIErrorResponse {
+	return NewErrorResponse(
+		http.StatusUnauthorized,
+		fmt.Errorf("incorrect credentials"),
+	)
+}
+
+func BadRequestParam(param string) *APIErrorResponse {
+	return NewErrorResponse(
+		http.StatusBadRequest,
+		fmt.Errorf("bad parameter: %v", param),
 	)
 }

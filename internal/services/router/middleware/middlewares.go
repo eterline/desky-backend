@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/configuration"
-	"github.com/eterline/desky-backend/internal/server/router/handler"
+	"github.com/eterline/desky-backend/internal/services/router/handler"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/go-chi/chi/middleware"
 	"github.com/gorilla/websocket"

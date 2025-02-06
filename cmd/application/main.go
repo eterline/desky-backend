@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,11 +11,7 @@ import (
 	"github.com/eterline/desky-backend/internal/application"
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/pkg/logger"
-
-	_ "net/http/pprof"
 )
-
-var config *configuration.Configuration = nil
 
 func init() {
 	flag.BoolFunc("gen", "To generate configuration file.", genConfig)
@@ -28,7 +22,7 @@ func init() {
 		panic(err)
 	}
 
-	config = configuration.GetConfig()
+	config := configuration.GetConfig()
 
 	if err := logger.InitLogger(
 		logger.WithDevEnvBool(config.DevelopEnv),
@@ -44,18 +38,14 @@ func init() {
 // @BasePath	/api/v1
 func main() {
 
-	go func() {
-		log.Println("Starting pprof on :6060")
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
 		syscall.SIGINT,
 		syscall.SIGTERM,
 	)
+	defer stop()
 
-	application.Exec(ctx, config, stop)
+	application.Exec(ctx, stop)
 }
 
 func genConfig(string) error {

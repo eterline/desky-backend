@@ -26,12 +26,12 @@ func NewSocketWithContext(ctx context.Context, conn *websocket.Conn) *WebSocketH
 	}
 }
 
-func (h *WebSocketHandle) AwaitClose() {
+func (h *WebSocketHandle) AwaitClose(codes ...int) {
 	go func() {
 		for {
 			_, _, err := h.connect.ReadMessage()
 			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				if websocket.IsCloseError(err, codes...) {
 					h.cancel()
 					return
 				}
@@ -49,5 +49,12 @@ func (h *WebSocketHandle) Exit() {
 }
 
 func (h *WebSocketHandle) WriteJSON(v any) error {
+
+	defer func() {
+		if recover() != nil {
+			return
+		}
+	}()
+
 	return h.connect.WriteJSON(v)
 }

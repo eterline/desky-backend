@@ -3,9 +3,14 @@ package application
 import (
 	"context"
 
+	"net/http/pprof"
+
 	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/models"
 	"github.com/eterline/desky-backend/internal/repository/storage"
 	"github.com/eterline/desky-backend/internal/server"
+	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
+	agentclient "github.com/eterline/desky-backend/pkg/agent-client"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/sirupsen/logrus"
 )
@@ -16,46 +21,72 @@ var (
 
 func Exec(
 	ctx context.Context,
-	config *configuration.Configuration,
 	stopFunc context.CancelFunc,
 ) {
-	log = logger.ReturnEntry().Logger
-	defer func() {
-		log.Info("service exit")
-		stopFunc()
-	}()
+	// ================= Settings parameters =================
 
-	if ok := storage.TestFile(config.DB.File); !ok {
-		config.DB.File = storage.DefaultName
-	}
+	log = logger.ReturnEntry().Logger
+	defer log.Info("service exit")
+
+	config := configuration.GetConfig()
+
+	// ================= Database parameters =================
 
 	db := storage.New(config.DB.File)
-	log.Infof("db initialized in file: %s", config.DB.File)
+
+	if ok := db.Test(); !ok {
+		log.Warningf("can't open db: %s. open default", config.DB.File)
+	}
 
 	if err := db.Connect(); err != nil {
 		log.Panicf("db connect error: %s", err)
 	}
-	log.Infof("db connected to file: %s", config.DB.File)
+	log.Infof("db connected to file: %s", db.Source())
 
-	ctx = context.WithValue(ctx, "database", db)
+	ctx = context.WithValue(ctx, "db", db)
 
-	if err := db.MigrateTables(); err != nil {
+	if err := db.MigrateTables(
+		new(models.AppsTopicT),
+		new(models.AppsInstancesT),
+		new(models.DeskyUserT),
+		new(models.ExporterInfoT),
+	); err != nil {
 		panic(err)
 	}
-	log.Infof("db migrated to: %s", config.DB.File)
+	log.Infof("db migrated to: %s", db.Source())
 
-	srv := server.New(
-		config.ServerSocket(),
-		config.SSL().CertFile,
-		config.SSL().KeyFile,
-		config.Server.Name,
-	)
+	// ================= Services additional =================
+
+	mon := agentmon.New(ctx)
+
+	for _, s := range config.Services.DeskyAgent {
+		log.Infof("connecting to agent: %s", s.API)
+		cl, err := agentclient.Reg(s.API, s.Token)
+
+		if err != nil {
+			log.Errorf("skip: %s. error: %s", s.API, err.Error())
+			continue
+		}
+
+		mon.AddSession(cl, cl.Info.Hostname, cl.Info.HostID, s.API)
+		log.Infof("agent successfully connected. hostname: %s. id: %s", cl.Info.Hostname, cl.Info.HostID)
+	}
+
+	ctx = context.WithValue(ctx, "agentmon", mon)
+
+	// ================= Server parameters =================
+
+	srv := server.New(config.ServerSocket(), config.SSL().CertFile, config.SSL().KeyFile, config.Server.Name)
 
 	router := server.ConfigRoutes(ctx, config)
 	router.Get("/config", PreferencesHandler(false, true))
 	router.Get("/health", HealthHandler)
 
+	router.Handle("/heap", pprof.Handler("heap"))
+
 	srv.Router(router)
+
+	// ================= Run main server parameters =================
 
 	go func() {
 		log.Infof("server start at: %s", config.URLString())
@@ -75,33 +106,3 @@ func Exec(
 		log.Errorf("server close error: %s", err.Error())
 	}
 }
-
-// a, err := agentclient.Reg("http://10.192.10.100:4000/api", "")
-// if err != nil {
-// 	panic(err)
-// }
-
-// data, ok := a.Info()
-// if !ok {
-// 	panic(ok)
-// }
-
-// mon := agentmon.New()
-// mon.AddSession(a, data.Hostname, data.HostID, "http://10.192.10.100:4000/api")
-
-// i := mon.Pool()
-
-// go func() {
-// 	for {
-// 		select {
-// 		case data := <-i:
-// 			fmt.Println(data)
-// 		}
-// 	}
-
-// }()
-
-// fmt.Println(utils.PrettyString(mon.List()))
-
-// <-ctx.Done()
-// mon.StopPooling()

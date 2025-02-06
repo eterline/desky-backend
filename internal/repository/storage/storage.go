@@ -2,8 +2,8 @@ package storage
 
 import (
 	"context"
+	"os"
 
-	"github.com/eterline/desky-backend/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -16,18 +16,35 @@ type DB struct {
 	config *gorm.Config
 }
 
-func TestFile(file string) bool {
-	return file != ""
-}
-
-func New(name string) *DB {
+func New(file string) *DB {
 	return &DB{
-		name: name,
+		name: file,
 		DB:   nil,
 		config: &gorm.Config{
 			Logger: NewLog(),
 		},
 	}
+}
+
+func (db *DB) Test() bool {
+
+	_, err := os.Stat(db.name)
+
+	switch {
+	case os.IsNotExist(err) == true:
+		db.name = DefaultName
+		return false
+
+	case err == nil:
+		return true
+
+	default:
+		panic(err)
+	}
+}
+
+func (db *DB) Source() string {
+	return db.name
 }
 
 func (db *DB) Connect() error {
@@ -51,19 +68,13 @@ func (db *DB) Close() error {
 	return dbInstance.Close()
 }
 
-func (db *DB) MigrateTables() error {
+func (db *DB) MigrateTables(tables ...any) error {
 	base, err := gorm.Open(sqlite.Open(db.name), &gorm.Config{})
 	if err != nil {
 		return err
 	}
 
-	err = base.AutoMigrate(
-		&models.AppsTopicT{},
-		&models.AppsInstancesT{},
-		&models.WidgetsT{},
-	)
-
-	if err != nil {
+	if err := base.AutoMigrate(tables...); err != nil {
 		return err
 	}
 

@@ -11,7 +11,7 @@ var ExportersMap map[string]any = map[string]any{
 	"ram":         RAM{},
 	"load":        Load{},
 	"temperature": SensorList{},
-	"ports":       Network{},
+	"ports":       Ports{},
 	"partitions":  PartitionList{},
 }
 
@@ -21,10 +21,10 @@ type HostInfo struct {
 }
 
 type DeskyAgent struct {
-	Url   *url.URL
-	Token keyBerearer
+	Url  *url.URL
+	Info *HostInfo
 
-	valid bool
+	token keyBerearer
 }
 
 type keyBerearer string
@@ -87,11 +87,9 @@ type (
 )
 
 type (
-	Network struct {
-		Interfaces []InterfaceStat `json:"interfaces"`
-	}
+	Ports []Interface
 
-	InterfaceStat struct {
+	Interface struct {
 		MTU          int    `json:"mtu"`  // maximum transmission unit
 		Name         string `json:"name"` // e.g., "en0", "lo0", "eth0.100"
 		HardwareAddr string `json:"mac"`  // IEEE MAC-48, EUI-48 and EUI-64 form

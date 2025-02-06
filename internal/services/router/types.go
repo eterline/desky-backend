@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/eterline/desky-backend/internal/server/router/handler"
+	"github.com/eterline/desky-backend/internal/services/router/handler"
 	"github.com/go-chi/chi"
 )
 

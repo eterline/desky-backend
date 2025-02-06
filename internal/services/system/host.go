@@ -114,17 +114,17 @@ func (hs *HostInfoService) CPUInfo() (cpu *CPUInfo) {
 
 func (hs *HostInfoService) Temperatures() (data []SensorInfo) {
 
-	data = []SensorInfo{}
-
 	stat, err := sensors.TemperaturesWithContext(hs.ctx)
 	if err == nil {
 
-		for _, sens := range stat {
-			data = append(data, SensorInfo{
+		data = make([]SensorInfo, len(stat))
+
+		for i, sens := range stat {
+			data[i] = SensorInfo{
 				Key:     sens.SensorKey,
 				Current: sens.Temperature,
 				Max:     sens.High,
-			})
+			}
 		}
 
 	}

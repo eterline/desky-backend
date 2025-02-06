@@ -1,11 +1,13 @@
 package sys
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/eterline/desky-backend/internal/server/router/handler"
+	"github.com/eterline/desky-backend/internal/models"
+	"github.com/eterline/desky-backend/internal/services/router/handler"
 	"github.com/eterline/desky-backend/internal/services/system"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/gorilla/websocket"
@@ -33,20 +35,22 @@ type Cacher interface {
 }
 
 type SysHandlerGroup struct {
-	Sys HostService
-	WS  websocket.Upgrader
+	HostService
+	websock *websocket.Upgrader
+	ctx     context.Context
 }
 
-func Init(hs HostService) *SysHandlerGroup {
+func Init(ctx context.Context, hs HostService) *SysHandlerGroup {
 	log = logger.ReturnEntry().Logger
 
 	return &SysHandlerGroup{
-		Sys: hs,
-
-		WS: websocket.Upgrader{
+		HostService: hs,
+		websock: &websocket.Upgrader{
 			HandshakeTimeout:  10 * time.Second,
 			EnableCompression: true,
 		},
+
+		ctx: ctx,
 	}
 }
 
@@ -60,10 +64,57 @@ func Init(hs HostService) *SysHandlerGroup {
 //	@Success		200	{object}	system.HostInfo
 //	@Failure		500	{object}	handler.APIErrorResponse	"Internal server error"
 //	@Router			/system/info [get]
-func (s *SysHandlerGroup) HostInfo(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handler.sys.host-info"
+func (s *SysHandlerGroup) Stats(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "sys.stats"
+	if websocket.IsWebSocketUpgrade(r) {
+		return s.StatsWS(w, r)
+	}
+	return op, handler.WriteJSON(w, http.StatusOK, s.HostInfo())
+}
 
-	return op, handler.WriteJSON(w, http.StatusOK, s.Sys.HostInfo())
+func (s *SysHandlerGroup) StatsWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "sys.stats[WS]"
+
+	conn, err := s.websock.Upgrade(w, r, nil)
+	if err != nil {
+		log.Error(err)
+		handler.InternalErrorResponse()
+		return op, err
+	}
+
+	infoGet := func() models.StatsResponse {
+		return models.StatsResponse{
+			RAM:  s.RAMInfo(),
+			CPU:  s.CPUInfo(),
+			Temp: s.Temperatures(),
+			Load: s.Load(),
+		}
+	}
+
+	so := handler.NewSocketWithContext(s.ctx, conn)
+	so.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
+
+	go func(so *handler.WebSocketHandle) {
+
+		ticker := time.NewTicker(time.Second * WS_Message_delay)
+		defer ticker.Stop()
+
+		for {
+			select {
+
+			case <-so.Done():
+				so.Exit()
+				return
+
+			case <-ticker.C:
+				data := infoGet()
+				conn.WriteJSON(data)
+			}
+		}
+
+	}(so)
+
+	return
 }
 
 // HostStatsWS godoc
@@ -76,91 +127,91 @@ func (s *SysHandlerGroup) HostInfo(w http.ResponseWriter, r *http.Request) (op s
 //	@Success		200	{object}	StatsResponse
 //	@Failure		500	{object}	handler.APIErrorResponse	"Internal server error"
 //	@Router			/system/stats [get]
-func (s *SysHandlerGroup) HostStatsWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handler.sys.host-stats-WS"
+// func (s *SysHandlerGroup) HostStatsWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
+// 	op = "handler.sys.host-stats-WS"
 
-	connection, err := s.WS.Upgrade(w, r, nil)
-	defer connection.Close()
-	if err != nil {
-		return op, err
-	}
+// 	connection, err := s.websock.Upgrade(w, r, nil)
+// 	defer connection.Close()
+// 	if err != nil {
+// 		return op, err
+// 	}
 
-	connection.SetCloseHandler(func(code int, text string) error {
-		log.Infof("websocket closed: %s - code: %d, reason: %s", connection.RemoteAddr(), code, text)
-		return nil
-	})
+// 	connection.SetCloseHandler(func(code int, text string) error {
+// 		log.Infof("websocket closed: %s - code: %d, reason: %s", connection.RemoteAddr(), code, text)
+// 		return nil
+// 	})
 
-	ticker := time.NewTicker(time.Second * WS_Message_delay)
-	defer ticker.Stop()
+// 	ticker := time.NewTicker(time.Second * WS_Message_delay)
+// 	defer ticker.Stop()
 
-	infoGet := func() StatsResponse {
-		return StatsResponse{
-			RAM:  s.Sys.RAMInfo(),
-			CPU:  s.Sys.CPUInfo(),
-			Temp: s.Sys.Temperatures(),
-			Load: s.Sys.Load(),
-		}
-	}
+// 	infoGet := func() models.StatsResponse {
+// 		return models.StatsResponse{
+// 			RAM:  s.RAMInfo(),
+// 			CPU:  s.CPUInfo(),
+// 			Temp: s.Temperatures(),
+// 			Load: s.Load(),
+// 		}
+// 	}
 
-	connection.WriteJSON(infoGet())
+// 	connection.WriteJSON(infoGet)
 
-	for {
-		select {
+// 	for {
+// 		select {
 
-		case <-ticker.C:
+// 		case <-ticker.C:
 
-			if err := connection.WriteJSON(infoGet()); err != nil {
-				switch e := err.(type) {
-				case *websocket.CloseError:
-					log.Infof("websocket connection: %s - closed", connection.RemoteAddr())
-					return op, nil
-				default:
-					log.Errorf("websocket error: %s", e.Error())
-					return op, e
-				}
-			}
-		}
+// 			if err := connection.WriteJSON(infoGet()); err != nil {
+// 				switch e := err.(type) {
+// 				case *websocket.CloseError:
+// 					log.Infof("websocket connection: %s - closed", connection.RemoteAddr())
+// 					return op, nil
+// 				default:
+// 					log.Errorf("websocket error: %s", e.Error())
+// 					return op, e
+// 				}
+// 			}
+// 		}
 
-	}
-}
+// 	}
+// }
 
-func (s *SysHandlerGroup) TtyWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handler.sys.tty-WS"
+// func (s *SysHandlerGroup) TtyWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
+// 	op = "handler.sys.tty-WS"
 
-	connection, err := s.WS.Upgrade(w, r, nil)
-	defer connection.Close()
-	if err != nil {
-		return op, err
-	}
+// 	connection, err := s.WS.Upgrade(w, r, nil)
+// 	defer connection.Close()
+// 	if err != nil {
+// 		return op, err
+// 	}
 
-	log.Infof("websocket connection: %s - opened", connection.RemoteAddr())
+// 	log.Infof("websocket connection: %s - opened", connection.RemoteAddr())
 
-	for {
-		_, msgContent, err := connection.ReadMessage()
-		if err != nil {
+// 	for {
+// 		_, msgContent, err := connection.ReadMessage()
+// 		if err != nil {
 
-			switch e := err.(type) {
+// 			switch e := err.(type) {
 
-			case *websocket.CloseError:
-				log.Infof("websocket connection: %s - closed", connection.RemoteAddr())
-				return op, nil
+// 			case *websocket.CloseError:
+// 				log.Infof("websocket connection: %s - closed", connection.RemoteAddr())
+// 				return op, nil
 
-			default:
-				log.Errorf("websocket tty error: %s", err.Error())
-				return op, e
-			}
-		}
+// 			default:
+// 				log.Errorf("websocket tty error: %s", err.Error())
+// 				return op, e
+// 			}
+// 		}
 
-		resp, err := system.HandleCommand(msgContent)
-		if err != nil {
-			log.Errorf("websocket tty error: %s", err.Error())
-		} else {
-			log.Infof("command: '%s' - executed by request: %s", resp.Command, connection.RemoteAddr())
-		}
+// 		resp, err := system.HandleCommand(msgContent)
+// 		if err != nil {
+// 			log.Errorf("websocket tty error: %s", err.Error())
+// 		} else {
+// 			log.Infof("command: '%s' - executed by request: %s", resp.Command, connection.RemoteAddr())
+// 		}
 
-		connection.WriteJSON(resp)
-	}
-}
+// 		connection.WriteJSON(resp)
+// 	}
+// }
 
 // SystemdUnits godoc
 //

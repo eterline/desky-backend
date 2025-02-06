@@ -8,20 +8,22 @@ import (
 )
 
 // Reg - register new agent session
-func Reg(api, key string) (agent *DeskyAgent, err error) {
+func Reg(api, key string) (*DeskyAgent, error) {
 	url, err := url.Parse(api)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	agent = &DeskyAgent{
+	info, ok := info(url, keyBerearer(key))
+	if !ok {
+		return nil, ErrInvalidAgent
+	}
+
+	return &DeskyAgent{
 		Url:   url,
-		Token: keyBerearer(key),
-
-		valid: false,
-	}
-
-	return
+		Info:  info,
+		token: keyBerearer(key),
+	}, nil
 }
 
 // Parameter - get parameter by value name:
@@ -34,10 +36,6 @@ func Reg(api, key string) (agent *DeskyAgent, err error) {
 // "partitions"
 func (a *DeskyAgent) Parameter(exporter string) (any, error) {
 
-	if !a.valid {
-		return nil, ErrInvalidAgent
-	}
-
 	data, path := a.modelFabric(exporter)
 	if data == nil {
 		return nil, ErrExporterNotExists
@@ -46,7 +44,7 @@ func (a *DeskyAgent) Parameter(exporter string) (any, error) {
 	req, err := requester.Make(a.apiAppend(path), &requester.RequestOptions{
 		SSLVerify: false,
 		Headers: map[string]string{
-			"Authorization": a.Token.Berearer(),
+			"Authorization": a.token.Berearer(),
 		},
 	})
 
@@ -65,47 +63,40 @@ func (a *DeskyAgent) Parameter(exporter string) (any, error) {
 	return data, nil
 }
 
-func (a *DeskyAgent) Info() (data *HostInfo, ok bool) {
-
-	data = new(HostInfo)
+func info(api *url.URL, token keyBerearer) (data *HostInfo, ok bool) {
 
 	defer func() {
 		if r := recover(); r == nil {
-			a.valid = true
 			return
 		}
 	}()
 
 	req, err := requester.Make(
-		strings.ReplaceAll(a.Url.String(), "api", "info"),
+		strings.ReplaceAll(api.String(), "api", "info"),
 		&requester.RequestOptions{
 			SSLVerify: false,
 			Headers: map[string]string{
-				"Authorization": a.Token.Berearer(),
+				"Authorization": token.Berearer(),
 			},
 		},
 	)
 
 	if err != nil {
-		a.valid = false
-		return nil, a.valid
+		return
 	}
 
 	if _, err := req.GET(); err != nil {
-		a.valid = false
-		return nil, a.valid
+		return
 	}
+
+	data = new(HostInfo)
 
 	if err := req.Resolve(data); err != nil {
-		a.valid = false
-		return nil, a.valid
+		return nil, false
 	}
 
-	return data, true
-}
-
-func (a *DeskyAgent) IsValid() bool {
-	return a.valid
+	ok = true
+	return
 }
 
 func (a *DeskyAgent) modelFabric(exporter string) (data any, url string) {
@@ -131,7 +122,7 @@ func (a *DeskyAgent) modelFabric(exporter string) (data any, url string) {
 		data = new(SensorList)
 
 	case "ports":
-		data = new(Network)
+		data = new(Ports)
 
 	case "partitions":
 		data = new(PartitionList)

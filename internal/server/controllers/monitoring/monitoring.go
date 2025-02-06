@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/server/router/handler"
+	"github.com/eterline/desky-backend/internal/services/router/handler"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -24,7 +24,7 @@ type MonitoringControllers struct {
 	ctx     context.Context
 }
 
-func Init(ctx context.Context, m MonitorProvider) *MonitoringControllers {
+func Init(ctx context.Context, m MonitorProvider, compress bool) *MonitoringControllers {
 
 	log = logger.ReturnEntry().Logger
 
@@ -34,6 +34,7 @@ func Init(ctx context.Context, m MonitorProvider) *MonitoringControllers {
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
+			EnableCompression: compress,
 		},
 		ctx: ctx,
 	}
@@ -59,44 +60,39 @@ func (mc *MonitoringControllers) MonitorWS(w http.ResponseWriter, r *http.Reques
 		return op, err
 	}
 
-	done := make(chan struct{})
+	so := handler.NewSocketWithContext(mc.ctx, conn)
+	so.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
 
-	go func() {
-		defer close(done)
-		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-					return
-				}
-			}
-		}
-	}()
+	// go func() {
+	// 	defer close(done)
+	// 	for {
+	// 		_, _, err := conn.ReadMessage()
+	// 		if err != nil {
+	// 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+	// 				return
+	// 			}
+	// 		}
+	// 	}
+	// }()
 
-	go func(
-		conn *websocket.Conn,
-		ctx context.Context,
-	) {
-		ch, stop := mc.monitor.Pool()
-		defer func() {
-			stop()
-			if recover() != nil {
-				log.Error("unexpected socket close")
-			}
-		}()
+	go func(so *handler.WebSocketHandle, ctx context.Context) {
+
+		mon, stop := mc.monitor.Pool()
+		defer stop()
 
 		for {
 			select {
 
-			case <-done:
-				conn.Close()
+			case <-so.Done():
+				so.Exit()
 				return
 
-			case data := <-ch:
+			case data := <-mon:
 				conn.WriteJSON(data)
 			}
 		}
-	}(conn, mc.ctx)
+
+	}(so, mc.ctx)
 
 	return
 }

@@ -7,14 +7,17 @@ import (
 	"github.com/eterline/desky-backend/internal/repository"
 	"github.com/eterline/desky-backend/internal/repository/storage"
 	"github.com/eterline/desky-backend/internal/server/controllers/applications"
+	"github.com/eterline/desky-backend/internal/server/controllers/auth"
+	"github.com/eterline/desky-backend/internal/server/controllers/exporter"
 	"github.com/eterline/desky-backend/internal/server/controllers/frontend"
 	"github.com/eterline/desky-backend/internal/server/controllers/monitoring"
 	"github.com/eterline/desky-backend/internal/server/controllers/sys"
-	"github.com/eterline/desky-backend/internal/server/router"
 	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
 	"github.com/eterline/desky-backend/internal/services/apps/appsdb"
+	"github.com/eterline/desky-backend/internal/services/authorization"
+	exporters "github.com/eterline/desky-backend/internal/services/exporter"
+	"github.com/eterline/desky-backend/internal/services/router"
 	"github.com/eterline/desky-backend/internal/services/system"
-	agentclient "github.com/eterline/desky-backend/pkg/agent-client"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/sirupsen/logrus"
 )
@@ -49,9 +52,10 @@ func api(
 	rt = router.NewRouterService()
 
 	rt.Mount("/apps", appsControllers(ctx))
-	rt.Mount("/system", systemControllers())
+	rt.Mount("/system", systemControllers(ctx))
 	rt.Mount("/agent", agentControllers(ctx, c))
-	// rt.Mount("/provide", providersControllers())
+	rt.Mount("/auth", authControllers(ctx, c))
+	rt.Mount("/exporter", exporterControllers(ctx))
 
 	return
 }
@@ -60,12 +64,11 @@ func api(
 
 func appsControllers(ctx context.Context) (rt *router.RouterService) {
 
-	db := ctx.Value("database").(*storage.DB)
+	db := ctx.Value("db").(*storage.DB)
 
-	repos := repository.NewAppsRepository(db.DB)
-	a := appsdb.NewAppService(repos)
-
-	srv := applications.Init(a)
+	srv := applications.Init(
+		appsdb.NewAppService(repository.NewAppsRepository(db.DB)),
+	)
 
 	rt = router.MakeSubroute(
 		router.NewHandler(router.GET, "/table", srv.ShowTable),
@@ -76,16 +79,17 @@ func appsControllers(ctx context.Context) (rt *router.RouterService) {
 	return
 }
 
-func systemControllers() (rt *router.RouterService) {
+func systemControllers(ctx context.Context) (rt *router.RouterService) {
 
 	hinf := system.NewHostInfoService()
 
-	s := sys.Init(hinf)
+	s := sys.Init(ctx, hinf)
 
 	rt = router.MakeSubroute(
-		router.NewHandler(router.GET, "/info", s.HostInfo),
+		router.NewHandler(router.GET, "/stats", s.Stats),
+
 		router.NewHandler(router.GET, "/systemd", s.SystemdUnits),
-		router.NewHandler(router.GET, "/stats", s.HostStatsWS),
+		router.NewHandler(router.POST, "/systemd/{unit}/{command}", s.UnitCommand),
 	)
 
 	return
@@ -93,26 +97,8 @@ func systemControllers() (rt *router.RouterService) {
 
 func agentControllers(ctx context.Context, c *configuration.Configuration) (rt *router.RouterService) {
 
-	agents := agentmon.New(ctx)
-
-	for _, conf := range c.Services.DeskyAgent {
-
-		session, err := agentclient.Reg(conf.API, conf.Token)
-		if err != nil {
-			log.Errorf("agent init error: %s", err.Error())
-		}
-
-		data, ok := session.Info()
-
-		if ok {
-			agents.AddSession(session, data.Hostname, data.HostID, conf.API)
-			log.Infof("agent init: %s", conf.API)
-			continue
-		}
-		log.Errorf("agent init error: %s", conf.API)
-	}
-
-	mon := monitoring.Init(ctx, agents)
+	a := ctx.Value("agentmon").(*agentmon.AgentMonitorService)
+	mon := monitoring.Init(ctx, a, true)
 
 	rt = router.MakeSubroute(
 		router.NewHandler(router.GET, "/monitor", mon.Monitor),
@@ -121,22 +107,42 @@ func agentControllers(ctx context.Context, c *configuration.Configuration) (rt *
 	return
 }
 
-// func providersControllers() (rt *router.RouterService) {
+func authControllers(ctx context.Context, c *configuration.Configuration) (rt *router.RouterService) {
 
-// 	config := configuration.GetConfig()
+	db := ctx.Value("db").(*storage.DB)
 
-// 	pvs := providers.Init()
+	authService := authorization.New(
+		repository.NewUsersRepository(db.DB),
+	)
 
-// 	pvs.Register(
-// 		providers.PVE,
-// 		provider.NewProxmoxProvider(config.Services),
-// 	)
+	authConrollers := auth.Init(authService, authService)
 
-// 	rt = router.MakeSubroute(
-// 		router.NewHandler(router.GET, "/{service}", pvs.ServiceSessions),
-// 		router.NewHandler(router.POST, "/{service}", pvs.ServiceSessions),
-// 		router.NewHandler(router.DELETE, "/{service}", pvs.ServiceSessions),
-// 	)
+	rt = router.MakeSubroute(
+		router.NewHandler(router.POST, "/login", authConrollers.Login),
+		router.NewHandler(router.POST, "/register", authConrollers.Register),
 
-// 	return
-// }
+		router.NewHandler(router.GET, "/users", authConrollers.Users),
+		router.NewHandler(router.DELETE, "/users/{id}", authConrollers.Delete),
+	)
+
+	return
+}
+
+func exporterControllers(ctx context.Context) (rt *router.RouterService) {
+
+	db := ctx.Value("db").(*storage.DB)
+
+	service := exporters.NewExporterService(
+		repository.NewExporterRepository(db.DB),
+	)
+
+	exc := exporter.Init(service)
+
+	rt = router.MakeSubroute(
+		router.NewHandler(router.GET, "/exporter", exc.ListAll),
+		router.NewHandler(router.POST, "/exporter/{service}", exc.Append),
+		router.NewHandler(router.DELETE, "/exporter/{id}", exc.Delete),
+	)
+
+	return
+}

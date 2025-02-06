@@ -3,7 +3,6 @@ package agentmon
 import "context"
 
 type Provider interface {
-	IsValid() bool
 	Parameter(string) (any, error)
 }
 
@@ -17,4 +16,5 @@ type Session struct {
 type AgentMonitorService struct {
 	sessions []Session
 	ctx      context.Context
+	done     bool
 }

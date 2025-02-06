@@ -6,18 +6,20 @@ import (
 )
 
 type AppsRepository struct {
-	db *gorm.DB
+	DefaultRepository
 }
 
 func NewAppsRepository(db *gorm.DB) *AppsRepository {
 	return &AppsRepository{
-		db,
+		DefaultRepository{
+			db: db,
+		},
 	}
 }
 
 func (r *AppsRepository) ListTopic() ([]models.AppsTopicT, error) {
 
-	var topics []models.AppsTopicT
+	topics := make([]models.AppsTopicT, 0)
 
 	if err := r.db.Find(&topics).Error; err != nil {
 		return nil, err
@@ -31,7 +33,7 @@ func (r *AppsRepository) CreateTopic(topic *models.AppsTopicT) error {
 }
 
 func (r *AppsRepository) DeleteTopic(name string) error {
-	return r.db.Delete(&models.AppsTopicT{}, "Name = ?", name).Error
+	return r.db.Unscoped().Delete(new(models.AppsTopicT), "Name = ?", name).Error
 }
 
 func (r *AppsRepository) Table() ([]models.AppsInstancesT, error) {
@@ -56,5 +58,5 @@ func (r *AppsRepository) CreateApp(app *models.AppsInstancesT) error {
 }
 
 func (r *AppsRepository) DeleteApp(id uint) error {
-	return r.db.Delete(&models.AppsInstancesT{}, id).Error
+	return r.db.Delete(new(models.AppsInstancesT), id).Error
 }

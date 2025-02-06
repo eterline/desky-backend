@@ -5,11 +5,10 @@ var ExporterList = []string{"host", "cpu", "ram", "load", "temperature", "ports"
 type SessionCredentials struct {
 	Hostname string `json:"hostname"`
 	ID       string `json:"id"`
-	Valid    bool   `json:"valid"`
 	URL      string `json:"url"`
 }
 
 type FetchedResponse struct {
-	SessionCredentials
+	ID   string         `json:"id"`
 	Data map[string]any `json:"data"`
 }

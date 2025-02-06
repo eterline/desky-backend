@@ -1,4 +1,4 @@
-package sys
+package models
 
 import "github.com/eterline/desky-backend/internal/services/system"
 
