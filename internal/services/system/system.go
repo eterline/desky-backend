@@ -89,19 +89,21 @@ func ProcessCommand(cmd string) (output []byte) {
 	return output
 }
 
-func HandleCommand(data []byte) (response *ResponseCLI, err error) {
-	req := RequestCLI{}
-	response = &ResponseCLI{}
+func HandleCommand(data []byte) (*MessageCLI, error) {
+
+	req := new(MessageCLI)
 
 	if err := json.Unmarshal(data, &req); err != nil {
-		return &ResponseCLI{
+		return &MessageCLI{
 			Command: "nil",
 			Output:  "uncorrect request",
 		}, ErrExec(err)
 	}
 
-	response.Command = req.Command
-	response.Output = string(ProcessCommand(req.Command))
+	output := ProcessCommand(req.Command)
 
-	return response, nil
+	return &MessageCLI{
+		Command: req.Command,
+		Output:  string(output),
+	}, nil
 }

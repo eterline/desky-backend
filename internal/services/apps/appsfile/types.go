@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-type AppsFileService struct {
+type AppsService struct {
 	File string
 	mu   sync.Mutex
 }

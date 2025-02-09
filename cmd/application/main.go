@@ -3,18 +3,16 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/eterline/desky-backend/internal/application"
 	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/repository/storage"
 	"github.com/eterline/desky-backend/pkg/logger"
 )
 
 func init() {
-	flag.BoolFunc("gen", "To generate configuration file.", genConfig)
 	c := flag.String("config", configuration.FileName, "Set configuration file path.")
 	flag.Parse()
 
@@ -38,6 +36,9 @@ func init() {
 // @BasePath	/api/v1
 func main() {
 
+	log := logger.ReturnEntry().Logger
+	config := configuration.GetConfig()
+
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
 		syscall.SIGINT,
@@ -45,14 +46,21 @@ func main() {
 	)
 	defer stop()
 
-	application.Exec(ctx, stop)
-}
+	// ================= Database parameters =================
 
-func genConfig(string) error {
-	if err := configuration.Migrate(configuration.FileName, 0644); err != nil {
-		panic(err)
+	db := storage.New(config.DB.File, nil)
+
+	if ok := db.Test(); !ok {
+		log.Warningf("can't open db: %s. open default", config.DB.File)
 	}
-	fmt.Println("Migration: default config generated")
-	os.Exit(0)
-	return nil
+
+	err := db.Connect()
+	if err != nil {
+		log.Panicf("db connect error: %s", err)
+	}
+	defer db.Close()
+
+	log.Infof("db connected to file: %s", db.Source())
+
+	application.Exec(context.WithValue(ctx, "sql_database", db), log, config)
 }

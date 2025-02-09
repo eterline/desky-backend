@@ -13,7 +13,7 @@ const (
 	Bcrypt
 )
 
-func NewHashService(algo Algorithm, salt []byte) *HashService {
+func New(algo Algorithm, salt []byte) *HashService {
 	return &HashService{
 		algo: algo,
 		salt: salt,

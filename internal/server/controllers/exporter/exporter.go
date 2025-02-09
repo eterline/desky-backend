@@ -90,31 +90,30 @@ func (exc *ExporterControllers) Delete(w http.ResponseWriter, r *http.Request) (
 }
 
 func (exc *ExporterControllers) appendExporter(r *http.Request, typeStr models.ExporterTypeString) error {
+
 	switch typeStr {
 
 	case models.ExporterProxmoxType:
 		form := new(models.ProxmoxFormExport)
-		if err := handler.DecodeRequest(r, form); err != nil {
-			return err
-		}
-
-		if err := exc.service.Append(form); err != nil {
-			return err
-		}
-		return nil
+		handler.DecodeRequest(r, form)
+		return exc.validForm(form)
 
 	case models.ExporterDockerType:
 		form := new(models.DockerFormExport)
-		if err := handler.DecodeRequest(r, form); err != nil {
-			return err
-		}
-
-		if err := exc.service.Append(form); err != nil {
-			return err
-		}
-		return nil
+		handler.DecodeRequest(r, form)
+		return exc.validForm(form)
 
 	default:
 		return handler.NotFoundPageResponse()
 	}
+}
+
+func (exc *ExporterControllers) validForm(form models.ExporterForm) error {
+	if err := handler.Validate(form); err != nil {
+		return err
+	}
+	if err := exc.service.Append(form); err != nil {
+		return err
+	}
+	return nil
 }

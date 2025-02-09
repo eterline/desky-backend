@@ -23,7 +23,7 @@ const (
 	LoginField    ExporterExtraField = "login"
 
 	NodeNameField  ExporterExtraField = "node"
-	DockerEnvField ExporterExtraField = "environtment"
+	DockerEnvField ExporterExtraField = "environment"
 )
 
 type ExporterInfo struct {
@@ -36,10 +36,10 @@ type ExporterInfo struct {
 // ============= Models for http body requests append controllers =============
 
 type ProxmoxFormExport struct {
-	API      string `json:"api"`
-	NodeName string `json:"node-name"`
-	Login    string `json:"login"`
-	Password string `json:"token"`
+	API      string `json:"api" validate:"url"`
+	NodeName string `json:"node-name" validate:"required"`
+	Login    string `json:"login" validate:"required"`
+	Password string `json:"token" validate:"required"`
 }
 
 func (form *ProxmoxFormExport) ValueType() ExporterTypeString {
@@ -62,8 +62,8 @@ func (form *ProxmoxFormExport) ValueExtra() string {
 // ==================
 
 type DockerFormExport struct {
-	API     string `json:"api"`
-	EnvName string `json:"environment"`
+	API     string `json:"api" validate:"url"`
+	EnvName string `json:"environment" validate:"required"`
 }
 
 func (form *DockerFormExport) ValueType() ExporterTypeString {

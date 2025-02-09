@@ -8,7 +8,7 @@ import (
 	"github.com/eterline/desky-backend/internal/utils"
 )
 
-func Init(file string) (*AppsFileService, error) {
+func New(file string) (*AppsService, error) {
 
 	err := testFile(file)
 
@@ -20,19 +20,19 @@ func Init(file string) (*AppsFileService, error) {
 		return nil, err
 	}
 
-	return &AppsFileService{
+	return &AppsService{
 		File: file,
 	}, nil
 }
 
-func (as *AppsFileService) Table() (table models.AppsTable, err error) {
+func (as *AppsService) Table() (table models.AppsTable, err error) {
 	as.mu.Lock()
 	defer as.mu.Unlock()
 
 	return as.read()
 }
 
-func (as *AppsFileService) Append(topic string, app models.AppDetails) error {
+func (as *AppsService) Append(topic string, app models.AppDetails) error {
 	as.mu.Lock()
 	defer as.mu.Unlock()
 
@@ -46,7 +46,7 @@ func (as *AppsFileService) Append(topic string, app models.AppDetails) error {
 	return as.rewrite(table)
 }
 
-func (as *AppsFileService) Delete(topic string, topicQuery int) error {
+func (as *AppsService) Delete(topic string, topicQuery int) error {
 	as.mu.Lock()
 	defer as.mu.Unlock()
 
@@ -69,11 +69,11 @@ func (as *AppsFileService) Delete(topic string, topicQuery int) error {
 }
 
 // TODO: Append functional
-func (as *AppsFileService) Edit(topic string, topicQuery int, app models.AppDetails) error {
+func (as *AppsService) Edit(topic string, topicQuery int, app models.AppDetails) error {
 	return nil
 }
 
-func (as *AppsFileService) read() (models.AppsTable, error) {
+func (as *AppsService) read() (models.AppsTable, error) {
 
 	table := make(models.AppsTable)
 
@@ -89,7 +89,7 @@ func (as *AppsFileService) read() (models.AppsTable, error) {
 	return table, nil
 }
 
-func (as *AppsFileService) rewrite(table models.AppsTable) error {
+func (as *AppsService) rewrite(table models.AppsTable) error {
 
 	file, err := os.OpenFile(as.File, os.O_RDWR, 0644)
 	defer file.Close()

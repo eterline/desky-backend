@@ -6,22 +6,24 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 const DefaultName = "desky.db"
 
 type DB struct {
 	name   string
-	DB     *gorm.DB
 	config *gorm.Config
+
+	*gorm.DB
 }
 
-func New(file string) *DB {
+func New(file string, logger logger.Interface) *DB {
 	return &DB{
 		name: file,
 		DB:   nil,
 		config: &gorm.Config{
-			Logger: NewLog(),
+			Logger: logger,
 		},
 	}
 }

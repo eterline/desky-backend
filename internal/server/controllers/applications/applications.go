@@ -15,13 +15,19 @@ type AppsService interface {
 	Table() (models.AppsTable, error)
 }
 
-type AppsHandlerGroup struct {
-	Apps AppsService
+type AppsDeleter interface {
+	DeleteApp(id uint) error
 }
 
-func Init(service AppsService) *AppsHandlerGroup {
+type AppsHandlerGroup struct {
+	Apps AppsService
+	Del  AppsDeleter
+}
+
+func Init(service AppsService, del AppsDeleter) *AppsHandlerGroup {
 	return &AppsHandlerGroup{
 		Apps: service,
+		Del:  del,
 	}
 }
 
@@ -76,8 +82,9 @@ func (as *AppsHandlerGroup) AppendApp(w http.ResponseWriter, r *http.Request) (o
 	}
 
 	data := new(models.AppDetails)
+	handler.DecodeRequest(r, data)
 
-	if err = handler.DecodeRequest(r, data); err != nil {
+	if err := handler.Validate(data); err != nil {
 		return op, err
 	}
 
@@ -127,4 +134,33 @@ func (as *AppsHandlerGroup) DeleteApp(w http.ResponseWriter, r *http.Request) (o
 	}
 
 	return op, err
+}
+
+// DeleteApp godoc
+//
+//	@Summary		DeleteApp
+//	@Description	Deleting app
+//	@Tags			applications
+//
+//	@Accept			json
+//	@Produce		json
+//	@Failure		501	{object}	handler.APIErrorResponse
+//	@Success		200	{object}	handler.APIResponse
+//
+//	@Router			/apps/table/{id} [delete]
+func (as *AppsHandlerGroup) DeleteAppById(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handler.applications.delete-app-by-id"
+
+	q, err := handler.ParseURLParameters(r, handler.NumOpts("id"))
+	if err != nil {
+		return op, err
+	}
+
+	id := uint(q.GetInt("id"))
+
+	if err = as.Del.DeleteApp(id); err != nil {
+		return op, err
+	}
+
+	return op, handler.StatusOK(w, "app deleted")
 }

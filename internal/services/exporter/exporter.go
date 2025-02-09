@@ -16,7 +16,7 @@ type ExporterService struct {
 	repo Repository
 }
 
-func NewExporterService(r Repository) *ExporterService {
+func New(r Repository) *ExporterService {
 	return &ExporterService{
 		repo: r,
 	}

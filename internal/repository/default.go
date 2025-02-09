@@ -1,7 +1,15 @@
 package repository
 
-import "gorm.io/gorm"
+import (
+	"github.com/eterline/desky-backend/internal/repository/storage"
+)
 
 type DefaultRepository struct {
-	db *gorm.DB
+	db *storage.DB
+}
+
+func NewDefaultRepository(db *storage.DB) DefaultRepository {
+	return DefaultRepository{
+		db: db,
+	}
 }

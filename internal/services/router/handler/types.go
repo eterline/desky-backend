@@ -40,3 +40,14 @@ func (ar *APIErrorResponse) Error() string {
 }
 
 type DataErrors map[string]error
+
+func (ar DataErrors) Error() string {
+
+	validatorErrString := "validation error: "
+
+	for key, val := range ar {
+		validatorErrString += fmt.Sprintf("%s:%s\n", key, val.Error())
+	}
+
+	return validatorErrString
+}

@@ -2,18 +2,16 @@ package repository
 
 import (
 	"github.com/eterline/desky-backend/internal/models"
-	"gorm.io/gorm"
+	"github.com/eterline/desky-backend/internal/repository/storage"
 )
 
 type ExporterRepository struct {
 	DefaultRepository
 }
 
-func NewExporterRepository(db *gorm.DB) *ExporterRepository {
+func NewExporterRepository(db *storage.DB) *ExporterRepository {
 	return &ExporterRepository{
-		DefaultRepository{
-			db: db,
-		},
+		NewDefaultRepository(db),
 	}
 }
 

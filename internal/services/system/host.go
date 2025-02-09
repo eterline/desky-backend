@@ -12,23 +12,23 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 )
 
-type HostInfoService struct {
+type SystemService struct {
 	ctx       context.Context
 	CancelCtx context.CancelFunc
 }
 
-func NewHostInfoService() *HostInfoService {
+func New() *SystemService {
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	return &HostInfoService{
+	return &SystemService{
 		ctx:       ctx,
 		CancelCtx: cancel,
 	}
 }
 
-func (hs *HostInfoService) RAMInfo() (ram *RAMInfo) {
+func (hs *SystemService) RAMInfo() (ram *RAMInfo) {
 
 	ram = &RAMInfo{}
 
@@ -45,7 +45,7 @@ func (hs *HostInfoService) RAMInfo() (ram *RAMInfo) {
 	return ram
 }
 
-func (hs *HostInfoService) HostInfo() (host *HostInfo) {
+func (hs *SystemService) HostInfo() (host *HostInfo) {
 
 	host = &HostInfo{}
 
@@ -69,7 +69,7 @@ func (hs *HostInfoService) HostInfo() (host *HostInfo) {
 	return host
 }
 
-func (hs *HostInfoService) CPUInfo() (cpu *CPUInfo) {
+func (hs *SystemService) CPUInfo() (cpu *CPUInfo) {
 
 	cpu = &CPUInfo{}
 
@@ -112,7 +112,7 @@ func (hs *HostInfoService) CPUInfo() (cpu *CPUInfo) {
 	return cpu
 }
 
-func (hs *HostInfoService) Temperatures() (data []SensorInfo) {
+func (hs *SystemService) Temperatures() (data []SensorInfo) {
 
 	stat, err := sensors.TemperaturesWithContext(hs.ctx)
 	if err == nil {
@@ -132,7 +132,7 @@ func (hs *HostInfoService) Temperatures() (data []SensorInfo) {
 	return data
 }
 
-func (hs *HostInfoService) Load() (avg *AverageLoad) {
+func (hs *SystemService) Load() (avg *AverageLoad) {
 
 	avg = &AverageLoad{}
 

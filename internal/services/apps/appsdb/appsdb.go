@@ -9,12 +9,14 @@ import (
 )
 
 type AppsService struct {
-	repos *repository.AppsRepository
+	repository *repository.AppsRepository
 	sync.Mutex
 }
 
-func NewAppService(repo *repository.AppsRepository) *AppsService {
-	return &AppsService{repos: repo}
+func New(repository *repository.AppsRepository) *AppsService {
+	return &AppsService{
+		repository: repository,
+	}
 }
 
 func (sc *AppsService) Append(topic string, app models.AppDetails) error {
@@ -33,7 +35,7 @@ func (sc *AppsService) Append(topic string, app models.AppDetails) error {
 		},
 	}
 
-	if err := sc.repos.CreateApp(instance); err != nil {
+	if err := sc.repository.CreateApp(instance); err != nil {
 		return err
 	}
 
@@ -45,7 +47,7 @@ func (sc *AppsService) Delete(topic string, topicQuery int) error {
 	sc.Lock()
 	defer sc.Unlock()
 
-	apps, err := sc.Table()
+	apps, err := sc.getTable()
 	if err != nil {
 		return err
 	}
@@ -68,7 +70,7 @@ func (sc *AppsService) Delete(topic string, topicQuery int) error {
 		return ErrAppNotFound
 	}
 
-	if err := sc.repos.DeleteApp(*id); err != nil {
+	if err := sc.repository.DeleteApp(*id); err != nil {
 		return err
 	}
 
@@ -78,7 +80,7 @@ func (sc *AppsService) Delete(topic string, topicQuery int) error {
 		return nil
 	}
 
-	if err := sc.repos.DeleteTopic(topic); err != nil {
+	if err := sc.repository.DeleteTopic(topic); err != nil {
 		return err
 	}
 
@@ -98,7 +100,12 @@ func (sc *AppsService) Table() (models.AppsTable, error) {
 	sc.Lock()
 	defer sc.Unlock()
 
-	apps, err := sc.repos.Table()
+	return sc.getTable()
+}
+
+func (sc *AppsService) getTable() (models.AppsTable, error) {
+
+	apps, err := sc.repository.Table()
 	if err != nil {
 		return nil, err
 	}

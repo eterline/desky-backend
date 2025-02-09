@@ -1,0 +1,161 @@
+package server
+
+import (
+	"context"
+
+	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/repository"
+	"github.com/eterline/desky-backend/internal/repository/storage"
+	"github.com/eterline/desky-backend/internal/server/controllers/applications"
+	"github.com/eterline/desky-backend/internal/server/controllers/auth"
+	"github.com/eterline/desky-backend/internal/server/controllers/exporter"
+	"github.com/eterline/desky-backend/internal/server/controllers/frontend"
+	"github.com/eterline/desky-backend/internal/server/controllers/monitoring"
+	"github.com/eterline/desky-backend/internal/server/controllers/sshlander"
+	"github.com/eterline/desky-backend/internal/server/controllers/sys"
+	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
+	"github.com/eterline/desky-backend/internal/services/apps/appsdb"
+	"github.com/eterline/desky-backend/internal/services/authorization"
+	exporters "github.com/eterline/desky-backend/internal/services/exporter"
+	"github.com/eterline/desky-backend/internal/services/router"
+	"github.com/eterline/desky-backend/internal/services/system"
+	"github.com/eterline/desky-backend/pkg/logger"
+	"github.com/sirupsen/logrus"
+)
+
+var (
+	log              *logrus.Logger = nil
+	databaseInstance *storage.DB    = nil
+)
+
+func ConfigRoutes(
+	ctx context.Context,
+	c *configuration.Configuration,
+) (r *router.RouterService) {
+	r = router.NewRouterService()
+
+	log = logger.ReturnEntry().Logger
+	databaseInstance = ctx.Value("sql_database").(*storage.DB)
+
+	f := frontend.Init()
+
+	r.Get("/", router.InitController(f.HTML))
+	r.Get("/assets/*", router.InitController(f.Assets))
+	r.Get("/static/*", router.InitController(f.Static))
+	r.Get("/wallpaper/*", router.InitController(f.WallpaperHandle))
+
+	r.MountWith("/api", api(ctx, c))
+
+	return
+}
+
+// api - setting up api routes
+func api(
+	ctx context.Context,
+	c *configuration.Configuration,
+) (rt *router.RouterService) {
+	rt = router.NewRouterService()
+
+	rt.Mount("/apps", controllerApps(ctx))
+	rt.Mount("/system", controllerSystem(ctx))
+	rt.Mount("/agent", controllerAgent(ctx))
+	rt.Mount("/auth", controllerAuth())
+	rt.Mount("/exporter", controllerExporter())
+	rt.Mount("/ssh", controllerSSH(ctx))
+
+	return
+}
+
+// ================== Setup controller groups ==================
+
+func controllerApps(ctx context.Context) (routes *router.RouterService) {
+
+	appRepo := repository.NewAppsRepository(databaseInstance)
+
+	srv := applications.Init(appsdb.New(appRepo), appRepo)
+
+	routes = router.MakeSubroute(
+		router.NewHandler(router.GET, "/table", srv.ShowTable),
+		router.NewHandler(router.POST, "/table/{topic}", srv.AppendApp),
+
+		router.NewHandler(router.DELETE, "/table/{id}", srv.DeleteAppById),
+		router.NewHandler(router.DELETE, "/table/{topic}/{number}", srv.DeleteApp),
+	)
+
+	return
+}
+
+func controllerSystem(ctx context.Context) (routes *router.RouterService) {
+
+	s := sys.Init(ctx, system.New())
+
+	routes = router.MakeSubroute(
+		router.NewHandler(router.GET, "/stats", s.Stats),
+
+		router.NewHandler(router.GET, "/systemd", s.SystemdUnits),
+		router.NewHandler(router.POST, "/systemd/{unit}/{command}", s.UnitCommand),
+	)
+
+	return
+}
+
+func controllerAgent(ctx context.Context) (routes *router.RouterService) {
+
+	a := ctx.Value("agentmon").(*agentmon.AgentMonitorService)
+	mon := monitoring.Init(ctx, a, true)
+
+	routes = router.MakeSubroute(
+		router.NewHandler(router.GET, "/monitor", mon.Monitor),
+	)
+
+	return
+}
+
+func controllerAuth() (routes *router.RouterService) {
+
+	authService := authorization.New(
+		repository.NewUsersRepository(databaseInstance),
+	)
+
+	group := auth.Init(authService, authService)
+
+	routes = router.MakeSubroute(
+		router.NewHandler(router.POST, "/login", group.Login),
+		router.NewHandler(router.POST, "/register", group.Register),
+
+		router.NewHandler(router.GET, "/users", group.Users),
+		router.NewHandler(router.DELETE, "/users/{id}", group.Delete),
+	)
+
+	return
+}
+
+func controllerExporter() (rt *router.RouterService) {
+
+	exporterService := exporters.New(repository.NewExporterRepository(databaseInstance))
+
+	group := exporter.Init(exporterService)
+
+	rt = router.MakeSubroute(
+		router.NewHandler(router.GET, "/exporter", group.ListAll),
+		router.NewHandler(router.POST, "/exporter/{service}", group.Append),
+		router.NewHandler(router.DELETE, "/exporter/{id}", group.Delete),
+	)
+
+	return
+}
+
+func controllerSSH(ctx context.Context) (routes *router.RouterService) {
+
+	sshRepository := repository.NewSSHLanderRepository(databaseInstance)
+
+	group := sshlander.Init(ctx, sshRepository)
+
+	routes = router.MakeSubroute(
+		router.NewHandler(router.GET, "/list", group.ListHosts),
+		router.NewHandler(router.POST, "/list", group.AppendHost),
+		router.NewHandler(router.DELETE, "/list/{id}", group.DeleteHost),
+	)
+
+	return
+}

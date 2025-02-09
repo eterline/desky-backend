@@ -61,11 +61,8 @@ type (
 )
 
 type (
-	RequestCLI struct {
-		Command string `json:"command"`
-	}
-	ResponseCLI struct {
-		Command string `json:"command"`
-		Output  string `json:"output"`
+	MessageCLI struct {
+		Command string `json:"command,omitempty"`
+		Output  string `json:"output,omitempty"`
 	}
 )

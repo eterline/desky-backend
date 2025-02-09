@@ -2,18 +2,16 @@ package repository
 
 import (
 	"github.com/eterline/desky-backend/internal/models"
-	"gorm.io/gorm"
+	"github.com/eterline/desky-backend/internal/repository/storage"
 )
 
 type UsersRepository struct {
 	DefaultRepository
 }
 
-func NewUsersRepository(db *gorm.DB) *UsersRepository {
+func NewUsersRepository(db *storage.DB) *UsersRepository {
 	return &UsersRepository{
-		DefaultRepository{
-			db: db,
-		},
+		NewDefaultRepository(db),
 	}
 }
 

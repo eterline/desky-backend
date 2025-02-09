@@ -24,7 +24,7 @@ type AppsInstancesT struct {
 	Description string
 	Link        string
 
-	TopicID uint       // External key
+	TopicID uint
 	Topic   AppsTopicT `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 }
 
@@ -60,4 +60,50 @@ func (t *ExporterInfoT) ResolveExtra() map[ExporterExtraField]any {
 	extra := make(map[ExporterExtraField]any)
 	json.Unmarshal([]byte(t.Extra), &extra)
 	return extra
+}
+
+// SSHLander service repository tables ===========================
+
+type SSHCredentialsT struct {
+	ID uint `gorm:"primaryKey"`
+
+	OperationSystemID uint
+	OperationSystem   SSHSystemTypesT `gorm:"foreignKey:OperationSystemID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+
+	Username string
+	Host     string
+	Port     uint16
+
+	SecurityID uint
+	Security   SSHSecureT `gorm:"foreignKey:SecurityID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+}
+
+type SSHSystemTypesT struct {
+	ID         uint      `gorm:"primaryKey"`
+	SystemType SSHtypeOS `gorm:"uniqueIndex"`
+}
+
+func MakeSSHSystemTypesT(value string) SSHSystemTypesT {
+	return SSHSystemTypesT{
+		SystemType: StringSSHtypeOS(value),
+	}
+}
+
+type SSHSecureT struct {
+	ID            uint `gorm:"primaryKey"`
+	PrivateKeyUse bool
+	Password      string
+	PrivateKey    string
+}
+
+func MakeSSHSecureT(
+	password string,
+	keyUse bool,
+	key string,
+) SSHSecureT {
+	return SSHSecureT{
+		PrivateKeyUse: keyUse,
+		Password:      password,
+		PrivateKey:    key,
+	}
 }

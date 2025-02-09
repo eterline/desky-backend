@@ -24,7 +24,7 @@ type AuthorizationService struct {
 func New(r UserRepository) *AuthorizationService {
 	return &AuthorizationService{
 		repository: r,
-		hash:       hash.NewHashService(hash.SHA512, []byte("random")),
+		hash:       hash.New(hash.SHA512, []byte("random")),
 	}
 }
 
