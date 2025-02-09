@@ -1,5 +1,6 @@
 desky-backend
 !cmd/desky-backend
+!cmd/migrator
 
 trace*
 logging/*
@@ -10,3 +11,6 @@ config*
 application
 !*/application
 *.db
+
+!*/dist
+dist
