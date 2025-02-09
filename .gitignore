@@ -1,4 +1,5 @@
 desky-backend
+migrator
 !cmd/desky-backend
 !cmd/migrator
 
