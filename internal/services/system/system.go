@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os/exec"
+	"net"
 	"strings"
 	"time"
 
@@ -59,21 +59,19 @@ func Uptime() UptimeDuration {
 	return UptimeDuration(t.Seconds())
 }
 
-func HostAddrs() (AddrsList, error) {
+func HostAddrs() AddrsList {
 
-	cmd, err := exec.LookPath("hostname")
+	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return nil, ErrExec(err)
+		return AddrsList{"0.0.0.0"}
+	}
+	list := make(AddrsList, len(addrs))
+
+	for i, addr := range addrs {
+		list[i] = strings.Split(addr.String(), "/")[0]
 	}
 
-	pipe := script.Exec(fmt.Sprintf("%s -I", cmd))
-
-	out, err := ExecOut(pipe)
-	if err != nil {
-		return nil, err
-	}
-
-	return strings.Split(string(out), " "), nil
+	return list
 }
 
 func ProcessCommand(cmd string) (output []byte) {

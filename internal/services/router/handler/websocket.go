@@ -7,7 +7,7 @@ import (
 )
 
 type WebSocketHandle struct {
-	connect *websocket.Conn
+	Connect *websocket.Conn
 	ctx     context.Context
 	cancel  context.CancelFunc
 }
@@ -20,7 +20,7 @@ func NewSocketWithContext(ctx context.Context, conn *websocket.Conn) *WebSocketH
 	ctx, cancel := context.WithCancel(ctx)
 
 	return &WebSocketHandle{
-		connect: conn,
+		Connect: conn,
 		ctx:     ctx,
 		cancel:  cancel,
 	}
@@ -28,16 +28,59 @@ func NewSocketWithContext(ctx context.Context, conn *websocket.Conn) *WebSocketH
 
 func (h *WebSocketHandle) AwaitClose(codes ...int) {
 	go func() {
+
+		if h.Connect == nil {
+			h.cancel()
+			return
+		}
+
 		for {
-			_, _, err := h.connect.ReadMessage()
-			if err != nil {
-				if websocket.IsCloseError(err, codes...) {
-					h.cancel()
+			for {
+				select {
+
+				case <-h.Done():
 					return
+
+				default:
+					_, _, err := h.Connect.ReadMessage()
+
+					if err != nil {
+						h.Connect.Close()
+						h.cancel()
+						return
+					}
 				}
 			}
 		}
 	}()
+}
+
+func (h *WebSocketHandle) AwaitMessage(v any) <-chan any {
+
+	channel := make(chan any, 1)
+
+	go func() {
+
+		defer close(channel)
+
+		for {
+			select {
+
+			case <-h.Done():
+				return
+
+			default:
+				err := h.Connect.ReadJSON(v)
+				if err != nil {
+					<-h.ctx.Done()
+					return
+				}
+				channel <- v
+			}
+		}
+	}()
+
+	return channel
 }
 
 func (h *WebSocketHandle) Done() <-chan struct{} {
@@ -45,7 +88,7 @@ func (h *WebSocketHandle) Done() <-chan struct{} {
 }
 
 func (h *WebSocketHandle) Exit() {
-	h.connect.Close()
+	h.Connect.Close()
 }
 
 func (h *WebSocketHandle) WriteJSON(v any) error {
@@ -56,5 +99,38 @@ func (h *WebSocketHandle) WriteJSON(v any) error {
 		}
 	}()
 
-	return h.connect.WriteJSON(v)
+	return h.Connect.WriteJSON(v)
+}
+
+func (h *WebSocketHandle) WriteError(err error) error {
+
+	defer func() {
+		if recover() != nil {
+			return
+		}
+	}()
+
+	e := NewWSHandlerError(
+		err.Error(),
+		false,
+	)
+
+	return h.WriteJSON(e)
+}
+
+func (h *WebSocketHandle) WriteCloseError(err error) {
+
+	defer func() {
+		if recover() != nil {
+			return
+		}
+	}()
+
+	e := NewWSHandlerError(
+		err.Error(),
+		true,
+	)
+
+	h.WriteJSON(e)
+	h.Exit()
 }

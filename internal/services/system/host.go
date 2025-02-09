@@ -49,11 +49,6 @@ func (hs *SystemService) HostInfo() (host *HostInfo) {
 
 	host = &HostInfo{}
 
-	addrs, err := HostAddrs()
-	if err != nil {
-		addrs = AddrsList{"0.0.0.0"}
-	}
-
 	info, err := hostPs.InfoWithContext(hs.ctx)
 	if err == nil {
 		host = &HostInfo{
@@ -62,7 +57,7 @@ func (hs *SystemService) HostInfo() (host *HostInfo) {
 			OS:           info.OS,
 			ProcessCount: info.Procs,
 			VirtSystem:   info.VirtualizationSystem,
-			Addrs:        addrs,
+			Addrs:        HostAddrs(),
 		}
 	}
 

@@ -39,6 +39,10 @@ func (exc *ExporterControllers) ListAll(w http.ResponseWriter, r *http.Request) 
 		return op, err
 	}
 
+	if handler.ListIsEmpty(w, exports) {
+		return op, nil
+	}
+
 	return op, handler.WriteJSON(w, http.StatusOK, exports)
 }
 

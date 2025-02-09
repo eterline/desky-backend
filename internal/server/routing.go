@@ -61,7 +61,7 @@ func api(
 	rt.Mount("/agent", controllerAgent(ctx))
 	rt.Mount("/auth", controllerAuth())
 	rt.Mount("/exporter", controllerExporter())
-	rt.Mount("/ssh", controllerSSH(ctx))
+	// rt.Mount("/ssh", controllerSSH(ctx))
 
 	return
 }
@@ -137,9 +137,9 @@ func controllerExporter() (rt *router.RouterService) {
 	group := exporter.Init(exporterService)
 
 	rt = router.MakeSubroute(
-		router.NewHandler(router.GET, "/exporter", group.ListAll),
-		router.NewHandler(router.POST, "/exporter/{service}", group.Append),
-		router.NewHandler(router.DELETE, "/exporter/{id}", group.Delete),
+		router.NewHandler(router.GET, "/list", group.ListAll),
+		router.NewHandler(router.POST, "/list/{service}", group.Append),
+		router.NewHandler(router.DELETE, "/list/{id}", group.Delete),
 	)
 
 	return
@@ -155,6 +155,10 @@ func controllerSSH(ctx context.Context) (routes *router.RouterService) {
 		router.NewHandler(router.GET, "/list", group.ListHosts),
 		router.NewHandler(router.POST, "/list", group.AppendHost),
 		router.NewHandler(router.DELETE, "/list/{id}", group.DeleteHost),
+
+		router.NewHandler(router.GET, "/ping", group.TestHosts),
+
+		router.NewHandler(router.GET, "/connect/{id}", group.ConnectionWS),
 	)
 
 	return

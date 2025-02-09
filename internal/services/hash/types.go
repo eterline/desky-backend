@@ -1,11 +1,13 @@
 package hash
 
+import "encoding/hex"
+
 type Algorithm int
 
 type HashStream []byte
 
 func (s HashStream) String() string {
-	return string(s)
+	return hex.EncodeToString(s)
 }
 
 func (s HashStream) Bytes() []byte {

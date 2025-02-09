@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -76,6 +77,10 @@ type SSHCredentialsT struct {
 
 	SecurityID uint
 	Security   SSHSecureT `gorm:"foreignKey:SecurityID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+}
+
+func (c *SSHCredentialsT) Socket() string {
+	return fmt.Sprintf("%s:%v", c.Host, c.Port)
 }
 
 type SSHSystemTypesT struct {

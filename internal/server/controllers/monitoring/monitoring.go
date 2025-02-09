@@ -47,7 +47,13 @@ func (mc *MonitoringControllers) Monitor(w http.ResponseWriter, r *http.Request)
 		return mc.MonitorWS(w, r)
 	}
 
-	return op, handler.WriteJSON(w, http.StatusOK, mc.monitor.List())
+	monitorList := mc.monitor.List()
+
+	if handler.ListIsEmpty(w, monitorList) {
+		return op, err
+	}
+
+	return op, handler.WriteJSON(w, http.StatusOK, monitorList)
 }
 
 func (mc *MonitoringControllers) MonitorWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
@@ -62,18 +68,6 @@ func (mc *MonitoringControllers) MonitorWS(w http.ResponseWriter, r *http.Reques
 
 	so := handler.NewSocketWithContext(mc.ctx, conn)
 	so.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
-
-	// go func() {
-	// 	defer close(done)
-	// 	for {
-	// 		_, _, err := conn.ReadMessage()
-	// 		if err != nil {
-	// 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-	// 				return
-	// 			}
-	// 		}
-	// 	}
-	// }()
 
 	go func(so *handler.WebSocketHandle, ctx context.Context) {
 

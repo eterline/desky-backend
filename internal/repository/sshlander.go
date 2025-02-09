@@ -19,7 +19,7 @@ func (r *SSHLanderRepository) QueryAll() ([]models.SSHCredentialsT, error) {
 
 	credentialsList := make([]models.SSHCredentialsT, 0)
 
-	if err := r.db.Find(&credentialsList).Error; err != nil {
+	if err := r.db.Preload("OperationSystem").Preload("Security").Find(&credentialsList).Error; err != nil {
 		return nil, err
 	}
 	return credentialsList, nil
@@ -57,4 +57,14 @@ func (r *SSHLanderRepository) Delete(id int) error {
 		return err
 	}
 	return nil
+}
+
+func (r *SSHLanderRepository) QueryById(id int) (*models.SSHCredentialsT, error) {
+
+	sshCredentials := new(models.SSHCredentialsT)
+
+	if err := r.db.Preload("OperationSystem").Preload("Security").First(sshCredentials, "ID = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return sshCredentials, nil
 }

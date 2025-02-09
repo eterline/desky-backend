@@ -70,3 +70,11 @@ func valFieldErr(field validator.FieldError) error {
 		return field
 	}
 }
+
+func ListIsEmpty[Type any](w http.ResponseWriter, list []Type) bool {
+	if list == nil || len(list) < 1 {
+		w.WriteHeader(http.StatusNoContent)
+		return true
+	}
+	return false
+}

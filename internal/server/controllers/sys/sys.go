@@ -45,14 +45,13 @@ func Init(ctx context.Context, hs HostService) *SysHandlerGroup {
 
 	return &SysHandlerGroup{
 		HostService: hs,
+		ctx:         ctx,
 		websock: &websocket.Upgrader{
 			HandshakeTimeout:  10 * time.Second,
 			EnableCompression: true,
 			ReadBufferSize:    1024,
 			WriteBufferSize:   1024,
 		},
-
-		ctx: ctx,
 	}
 }
 
