@@ -44,19 +44,16 @@ func ConfigRoutes(
 	r.Get("/static/*", router.InitController(f.Static))
 	r.Get("/wallpaper/*", router.InitController(f.WallpaperHandle))
 
-	r.MountWith("/api", api(ctx, c))
+	r.MountWith("/api", api(ctx))
 
 	return
 }
 
 // api - setting up api routes
-func api(
-	ctx context.Context,
-	c *configuration.Configuration,
-) (rt *router.RouterService) {
+func api(ctx context.Context) (rt *router.RouterService) {
 	rt = router.NewRouterService()
 
-	rt.Mount("/apps", controllerApps(ctx))
+	rt.Mount("/apps", controllerApps())
 	rt.Mount("/system", controllerSystem(ctx))
 	rt.Mount("/agent", controllerAgent(ctx))
 	rt.Mount("/auth", controllerAuth())
@@ -68,7 +65,7 @@ func api(
 
 // ================== Setup controller groups ==================
 
-func controllerApps(ctx context.Context) (routes *router.RouterService) {
+func controllerApps() (routes *router.RouterService) {
 
 	appRepo := repository.NewAppsRepository(databaseInstance)
 
@@ -101,8 +98,8 @@ func controllerSystem(ctx context.Context) (routes *router.RouterService) {
 
 func controllerAgent(ctx context.Context) (routes *router.RouterService) {
 
-	a := ctx.Value("agentmon").(*agentmon.AgentMonitorService)
-	mon := monitoring.Init(ctx, a, true)
+	agent := ctx.Value("agentmon").(*agentmon.AgentMonitorService)
+	mon := monitoring.Init(ctx, agent, true)
 
 	routes = router.MakeSubroute(
 		router.NewHandler(router.GET, "/monitor", mon.Monitor),
