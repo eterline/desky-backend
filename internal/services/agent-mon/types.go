@@ -18,3 +18,15 @@ type AgentMonitorService struct {
 	ctx      context.Context
 	done     bool
 }
+
+type AgentRequest interface {
+	ValueAPI() string
+	ValueToken() string
+}
+
+type ValidateData struct {
+	URL      string
+	ID       string
+	Hostname string
+	Err      error
+}

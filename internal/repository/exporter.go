@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/repository/storage"
+	"github.com/eterline/desky-backend/internal/services/storage"
 )
 
 type ExporterRepository struct {

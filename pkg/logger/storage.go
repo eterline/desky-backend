@@ -12,7 +12,7 @@ type StorageLogger struct {
 	logger *logrus.Logger
 }
 
-func NewLog() *StorageLogger {
+func InitStorageLogger() *StorageLogger {
 	return &StorageLogger{
 		logger: entry.Logger,
 	}

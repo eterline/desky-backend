@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/eterline/desky-backend/internal/models"
+	agentclient "github.com/eterline/desky-backend/pkg/agent-client"
 )
 
 func New(ctx context.Context) *AgentMonitorService {
@@ -13,6 +14,39 @@ func New(ctx context.Context) *AgentMonitorService {
 		ctx:      ctx,
 		done:     false,
 	}
+}
+
+func (a *AgentMonitorService) ValidateAgents(requestList ...AgentRequest) <-chan ValidateData {
+
+	validationChannel := make(chan ValidateData, 1)
+
+	go func() {
+
+		defer close(validationChannel)
+
+		for _, request := range requestList {
+
+			select {
+
+			case <-a.ctx.Done():
+				return
+
+			default:
+				cl, err := agentclient.Reg(request.ValueAPI(), request.ValueToken())
+				if err != nil {
+					validationChannel <- ValidateData{URL: request.ValueAPI(), Err: err}
+					continue
+				}
+
+				a.AddSession(cl, cl.Info.Hostname, cl.Info.HostID, request.ValueAPI())
+				validationChannel <- ValidateData{
+					URL: request.ValueAPI(), ID: cl.Info.HostID, Hostname: cl.Info.Hostname,
+				}
+			}
+		}
+	}()
+
+	return validationChannel
 }
 
 func (a *AgentMonitorService) AddSession(p Provider, hostname, id, url string) {

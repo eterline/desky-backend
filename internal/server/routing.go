@@ -5,7 +5,6 @@ import (
 
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/repository"
-	"github.com/eterline/desky-backend/internal/repository/storage"
 	"github.com/eterline/desky-backend/internal/server/controllers/applications"
 	"github.com/eterline/desky-backend/internal/server/controllers/auth"
 	"github.com/eterline/desky-backend/internal/server/controllers/exporter"
@@ -18,6 +17,7 @@ import (
 	"github.com/eterline/desky-backend/internal/services/authorization"
 	exporters "github.com/eterline/desky-backend/internal/services/exporter"
 	"github.com/eterline/desky-backend/internal/services/router"
+	"github.com/eterline/desky-backend/internal/services/storage"
 	"github.com/eterline/desky-backend/internal/services/system"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/sirupsen/logrus"

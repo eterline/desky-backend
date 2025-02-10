@@ -2,9 +2,8 @@ package storage
 
 import (
 	"context"
-	"os"
+	"fmt"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -12,48 +11,36 @@ import (
 const DefaultName = "desky.db"
 
 type DB struct {
-	name   string
-	config *gorm.Config
-
+	provide StorageProvider
+	config  *gorm.Config
 	*gorm.DB
 }
 
-func New(file string, logger logger.Interface) *DB {
+func New(provider StorageProvider, logger logger.Interface) *DB {
 	return &DB{
-		name: file,
-		DB:   nil,
+		provide: provider,
 		config: &gorm.Config{
 			Logger: logger,
 		},
-	}
-}
-
-func (db *DB) Test() bool {
-
-	_, err := os.Stat(db.name)
-
-	switch {
-	case os.IsNotExist(err) == true:
-		db.name = DefaultName
-		return false
-
-	case err == nil:
-		return true
-
-	default:
-		panic(err)
+		DB: nil,
 	}
 }
 
 func (db *DB) Source() string {
-	return db.name
+	return fmt.Sprintf("%s=%s", db.provide.StorageType(), db.provide.Source())
 }
 
 func (db *DB) Connect() error {
-	base, err := gorm.Open(sqlite.Open(db.name), db.config)
+	base, err := gorm.Open(db.provide.Socket(), db.config)
 	if err != nil {
 		return err
 	}
+
+	base.Logger.Info(
+		context.Background(), "db connected: %s=%s",
+		db.provide.StorageType(), db.provide.Source(),
+	)
+
 	db.DB = base
 	return nil
 }
@@ -71,7 +58,7 @@ func (db *DB) Close() error {
 }
 
 func (db *DB) MigrateTables(tables ...any) error {
-	base, err := gorm.Open(sqlite.Open(db.name), &gorm.Config{})
+	base, err := gorm.Open(db.provide.Socket(), &gorm.Config{})
 	if err != nil {
 		return err
 	}

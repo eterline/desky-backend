@@ -8,7 +8,7 @@ import (
 
 	"github.com/eterline/desky-backend/internal/application"
 	"github.com/eterline/desky-backend/internal/configuration"
-	"github.com/eterline/desky-backend/internal/repository/storage"
+	"github.com/eterline/desky-backend/internal/services/storage"
 	"github.com/eterline/desky-backend/pkg/logger"
 )
 
@@ -48,19 +48,13 @@ func main() {
 
 	// ================= Database parameters =================
 
-	db := storage.New(config.DB.File, nil)
-
-	if ok := db.Test(); !ok {
-		log.Warningf("can't open db: %s. open default", config.DB.File)
-	}
+	db := storage.New(storage.NewStorageSQLite("desky.db"), logger.InitStorageLogger())
 
 	err := db.Connect()
 	if err != nil {
 		log.Panicf("db connect error: %s", err)
 	}
 	defer db.Close()
-
-	log.Infof("db connected to file: %s", db.Source())
 
 	application.Exec(context.WithValue(ctx, "sql_database", db), log, config)
 }

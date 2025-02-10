@@ -6,7 +6,6 @@ import (
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/server"
 	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
-	agentclient "github.com/eterline/desky-backend/pkg/agent-client"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,21 +18,15 @@ func Exec(
 
 	mon := agentmon.New(ctx)
 
-	for _, agent := range config.Services.DeskyAgent {
-		log.Infof("connecting to agent: %s", agent.API)
-		cl, err := agentclient.Reg(agent.API, agent.Token)
-
-		if err != nil {
-			log.Errorf("skip: %s. error: %s", agent.API, err.Error())
-			continue
+	for data := range mon.ValidateAgents(config.Services.DeskyAgent.ToRequestList()...) {
+		if data.Err != nil {
+			log.Error(data.Err.Error())
+		} else {
+			log.Infof(
+				"agent successfully connected: %s. id: %s. hostname: %s",
+				data.URL, data.ID, data.Hostname,
+			)
 		}
-
-		log.Infof(
-			"agent successfully connected. hostname: %s. id: %s",
-			cl.Info.Hostname, cl.Info.HostID,
-		)
-
-		mon.AddSession(cl, cl.Info.Hostname, cl.Info.HostID, agent.API)
 	}
 
 	ctx = context.WithValue(ctx, "agentmon", mon)

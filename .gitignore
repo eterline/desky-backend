@@ -1,5 +1,6 @@
 desky-backend
 migrator
+cmd/tests
 !cmd/desky-backend
 !cmd/migrator
 
@@ -15,3 +16,5 @@ application
 
 !*/dist
 dist
+
+.env

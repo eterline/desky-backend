@@ -7,7 +7,7 @@ import (
 
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/repository/storage"
+	"github.com/eterline/desky-backend/internal/services/storage"
 )
 
 var (
@@ -33,11 +33,7 @@ func init() {
 
 func main() {
 
-	db := storage.New(dbFile, nil)
-
-	if ok := db.Test(); !ok {
-		fmt.Sprintf("can't open db: %s. open default", dbFile)
-	}
+	db := storage.New(storage.NewStorageSQLite("desky.db"), nil)
 
 	err := db.Connect()
 	defer db.Close()
