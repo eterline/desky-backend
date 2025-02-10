@@ -2,11 +2,13 @@ package sshlander
 
 import (
 	"bufio"
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -20,15 +22,18 @@ const (
 )
 
 type SSHLanderService struct {
-	config       *ssh.ClientConfig
-	shellSession *ssh.Session
+	config *ssh.ClientConfig
 
 	stdinPipe  io.WriteCloser
 	stdoutPipe io.Reader
+
+	shellSession *ssh.Session
+	shellСlient  *ssh.Client
+
+	sync.Mutex
 }
 
 func New(user string) *SSHLanderService {
-
 	return &SSHLanderService{
 		config: &ssh.ClientConfig{
 			User: user,
@@ -63,96 +68,141 @@ func (s *SSHLanderService) SetupAuth(t AuthType, secret string) error {
 
 }
 
-func (s *SSHLanderService) Connect(address string) error {
+func (s *SSHLanderService) Connect(ctx context.Context, address string) error {
 	cl, err := ssh.Dial("tcp", address, s.config)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to dial: %w", err)
 	}
 
 	session, err := cl.NewSession()
 	if err != nil {
-		return err
+		cl.Close()
+		return fmt.Errorf("failed to create session: %w", err)
 	}
 
 	modes := ssh.TerminalModes{
-		ssh.ECHO:          1,     // Включение echo
-		ssh.TTY_OP_ISPEED: 14400, // Скорость передачи
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
 		ssh.TTY_OP_OSPEED: 14400,
 	}
 
 	if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
 		session.Close()
-		return fmt.Errorf("request for pseudo terminal failed: %v", err)
+		cl.Close()
+		return fmt.Errorf("request for pseudo terminal failed: %w", err)
 	}
 
-	stdinPipe, err := session.StdinPipe()
+	inPipe, err := session.StdinPipe()
 	if err != nil {
-		return err
+		session.Close()
+		cl.Close()
+		return fmt.Errorf("failed to get stdin pipe: %w", err)
 	}
 
-	stdoutPipe, err := session.StdoutPipe()
+	outPipe, err := session.StdoutPipe()
 	if err != nil {
-		return err
+		inPipe.Close()
+		session.Close()
+		cl.Close()
+		return fmt.Errorf("failed to get stdout pipe: %w", err)
 	}
 
 	if err := session.Shell(); err != nil {
-		return err
+		inPipe.Close()
+		session.Close()
+		cl.Close()
+		return fmt.Errorf("failed to start shell: %w", err)
 	}
 
-	s.stdinPipe = stdinPipe
-	s.stdoutPipe = stdoutPipe
-
+	s.stdinPipe = inPipe
+	s.stdoutPipe = outPipe
 	s.shellSession = session
+	s.shellСlient = cl
+
+	go func() {
+		<-ctx.Done()
+		s.Exit()
+	}()
+
 	return nil
 }
 
-// TODO: доделать работу с ssh
-func (s *SSHLanderService) SendCommand(command string) (string, error) {
-	endMarker := "COMMAND_FINISHED_MARKER_12345"
-	fullCommand := fmt.Sprintf("%s; echo %s\n", command, endMarker)
+func (s *SSHLanderService) SendCommand(command string) <-chan string {
+	s.Lock()
+	outputChan := make(chan string)
 
-	_, err := fmt.Fprint(s.stdinPipe, fullCommand)
-	if err != nil {
-		return "", err
-	}
+	go func() {
+		defer close(outputChan)
+		defer s.Unlock()
 
-	var outputBuf bytes.Buffer
-	reader := bufio.NewReader(s.stdoutPipe)
+		endMarker := "COMMAND_FINISHED_MARKER"
+		fullCommand := fmt.Sprintf("%s; pwd; echo %s\n", command, endMarker)
 
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil && err != io.EOF {
-			return "", err
+		_, err := fmt.Fprint(s.stdinPipe, fullCommand)
+		if err != nil {
+			outputChan <- fmt.Sprintf("stdin error: %v", err)
+			return
 		}
-		outputBuf.WriteString(line)
 
-		if strings.Contains(line, endMarker) {
-			break
+		reader := InitLineReader("", s.stdoutPipe)
+
+		for {
+			line := reader.Read()
+
+			if strings.HasPrefix(line, endMarker) {
+				return
+			}
+
+			if !strings.Contains(line, endMarker) {
+				outputChan <- strings.TrimSpace(line)
+			}
 		}
-	}
+	}()
 
-	finalOutput := cleanOutput(outputBuf.String(), endMarker)
-	return finalOutput, nil
-}
-
-func cleanOutput(rawOutput, marker string) string {
-	lines := strings.Split(rawOutput, "\n")
-	var result []string
-
-	for _, line := range lines {
-		if strings.Contains(line, "Welcome to") ||
-			strings.Contains(line, "Documentation:") ||
-			strings.Contains(line, marker) ||
-			strings.HasPrefix(line, "root@") ||
-			strings.TrimSpace(line) == "" {
-			continue
-		}
-		result = append(result, line)
-	}
-
-	return strings.Join(result, "\n")
+	return outputChan
 }
 
 func (s *SSHLanderService) Exit() error {
-	return s.shellSession.Close()
+	s.Lock()
+	defer s.Unlock()
+
+	if s.shellSession != nil {
+		s.shellSession.Close()
+	}
+	if s.shellСlient != nil {
+		s.shellСlient.Close()
+	}
+	return nil
+}
+
+type LineReader struct {
+	filter *regexp.Regexp
+	reader *bufio.Reader
+}
+
+func InitLineReader(regExp string, pipe io.Reader) *LineReader {
+
+	filt := regexp.MustCompile(regExp)
+
+	if regExp == "" {
+		filt = regexp.MustCompile(`\\x1b\\[[0-9;]*[a-zA-Z]`)
+	}
+
+	return &LineReader{
+		filter: filt,
+		reader: bufio.NewReader(pipe),
+	}
+}
+
+func (ls *LineReader) Read() string {
+	line, err := ls.reader.ReadString('\n')
+	if err != nil {
+		if err != io.EOF {
+			return fmt.Sprintf("stdout error: %v", err)
+		}
+	}
+
+	filteredLine := ls.filter.ReplaceAllString(line, "")
+
+	return strings.TrimSpace(filteredLine)
 }

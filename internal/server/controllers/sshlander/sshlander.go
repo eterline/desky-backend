@@ -10,8 +10,10 @@ import (
 	"github.com/eterline/desky-backend/internal/models"
 	"github.com/eterline/desky-backend/internal/services/router/handler"
 	sshlander "github.com/eterline/desky-backend/internal/services/ssh-lander"
+	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/go-ping/ping"
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
 type SSHRepository interface {
@@ -25,6 +27,8 @@ type SSHLanderControllers struct {
 	ctx     context.Context
 	repoSSH SSHRepository
 	websock *websocket.Upgrader
+
+	logging *logrus.Logger
 }
 
 func Init(
@@ -37,9 +41,11 @@ func Init(
 		websock: &websocket.Upgrader{
 			HandshakeTimeout:  10 * time.Second,
 			EnableCompression: true,
-			ReadBufferSize:    2048,
-			WriteBufferSize:   2048,
+			ReadBufferSize:    1024,
+			WriteBufferSize:   1024,
 		},
+
+		logging: logger.ReturnEntry().Logger,
 	}
 }
 
@@ -201,6 +207,7 @@ func (mc *SSHLanderControllers) ConnectionWS(w http.ResponseWriter, r *http.Requ
 	}
 
 	socket := handler.NewSocketWithContext(mc.ctx, conn)
+	mc.logging.Warnf("ssh external connection: %s. user: %s", credentials.Host, credentials.Username)
 	return op, mc.ProcessSSH(socket, credentials)
 }
 
@@ -208,17 +215,14 @@ func (mc *SSHLanderControllers) ProcessSSH(sock *handler.WebSocketHandle, data *
 
 	ssh := sshlander.New(data.Username)
 
-	fmt.Println(data.Username)
-	fmt.Println(data.Socket())
-	fmt.Println(data.Security.Password)
-
 	if data.Security.PrivateKeyUse {
 		ssh.SetupAuth(sshlander.PrivateKeyMethod, data.Security.PrivateKey)
 	} else {
 		ssh.SetupAuth(sshlander.PasswordMethod, data.Security.Password)
 	}
 
-	if err := ssh.Connect(data.Socket()); err != nil {
+	if err := ssh.Connect(mc.ctx, data.Socket()); err != nil {
+		mc.logging.Errorf("ssh connection error: %s", err.Error())
 		sock.WriteCloseError(err)
 		return err
 	}
@@ -237,6 +241,7 @@ func (mc *SSHLanderControllers) ProcessSSH(sock *handler.WebSocketHandle, data *
 		defer func() {
 			socket.Exit()
 			ssh.Exit()
+			mc.logging.Infof("ssh connection closed: %s", data.Host)
 		}()
 
 		msg := socket.AwaitMessage(new(models.SSHSessionRequest))
@@ -246,32 +251,21 @@ func (mc *SSHLanderControllers) ProcessSSH(sock *handler.WebSocketHandle, data *
 
 			case <-socket.Done():
 				return
-			case m := <-msg:
 
+			case m := <-msg:
 				val, ok := m.(*models.SSHSessionRequest)
 				if !ok {
 					continue
 				}
 
-				data := models.SSHSessionResponse{
-					Host:    data.Host,
-					User:    data.Username,
-					Command: val.Command,
-					Closed:  false,
+				mc.logging.Infof("ssh command: %s. host: %s", val.Command, data.Host)
+
+				response := ssh.SendCommand(val.Command)
+				for output := range response {
+					socket.WriteJSON(models.SSHSessionResponse{
+						Response: output,
+					})
 				}
-
-				response, err := ssh.SendCommand(val.Command)
-				if err != nil {
-					data.Response = "failed connection"
-					data.Closed = true
-					sock.WriteJSON(data)
-					return
-				}
-
-				data.Response = response
-
-				sock.WriteJSON(data)
-
 			}
 		}
 

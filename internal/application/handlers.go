@@ -11,18 +11,3 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ====================================================================
-
-func PreferencesHandler(auth bool, darkTheme bool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		pref := PresencesResponse{
-			DarkTheme:  darkTheme,
-			Language:   "EN",
-			Background: "none",
-			Auth:       auth,
-		}
-
-		handler.WriteJSON(w, http.StatusOK, pref)
-	}
-}
-
-// ====================================================================

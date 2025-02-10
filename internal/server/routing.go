@@ -58,7 +58,7 @@ func api(ctx context.Context) (rt *router.RouterService) {
 	rt.Mount("/agent", controllerAgent(ctx))
 	rt.Mount("/auth", controllerAuth())
 	rt.Mount("/exporter", controllerExporter())
-	// rt.Mount("/ssh", controllerSSH(ctx))
+	rt.Mount("/ssh", controllerSSH(ctx))
 
 	return
 }

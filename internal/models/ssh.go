@@ -58,12 +58,7 @@ type SSHTestObject struct {
 // ====================================================
 
 type SSHSessionResponse struct {
-	Host string `json:"host"`
-	User string `json:"user"`
-
-	Command  string `json:"command"`
 	Response string `json:"response"`
-	Closed   bool   `json:"closed"`
 }
 
 type SSHSessionRequest struct {

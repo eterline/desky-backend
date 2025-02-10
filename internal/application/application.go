@@ -14,6 +14,12 @@ func Exec(
 	log *logrus.Logger,
 	config *configuration.Configuration,
 ) {
+	// ================= App additional =================
+
+	settings := new(ApplicationSettings)
+	settings.SetLanguage(LangEN)
+	settings.SetBG("none")
+
 	// ================= Services additional =================
 
 	mon := agentmon.New(ctx)
@@ -42,7 +48,7 @@ func Exec(
 
 	router := server.ConfigRoutes(ctx, config)
 
-	router.Get("/config", PreferencesHandler(false, true))
+	router.Get("/config", settings.SettingHandler)
 	router.Get("/health", HealthHandler)
 
 	srv.Router(router)
