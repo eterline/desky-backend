@@ -11,7 +11,7 @@ type (
 	// Implements Global value cache for web-server
 	CacheService struct {
 		store ProvideMap
-		mu    sync.Mutex
+		mu    sync.RWMutex
 	}
 
 	ProvideMap map[any]CacheDataUnit
@@ -35,6 +35,10 @@ func GetEntry() *CacheService {
 }
 
 func (cache *CacheService) GetValue(key any) any {
+
+	cache.mu.RLock()
+	defer cache.mu.RLock()
+
 	return cache.store[key].CachedObj
 }
 
@@ -51,6 +55,7 @@ func (cache *CacheService) PushValue(key, value any) {
 }
 
 func (cache *CacheService) CleanValue(key any) {
+
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
@@ -78,8 +83,8 @@ func (cache *CacheService) OlderThanAndExists(key any, duration time.Duration) b
 
 func (cache *CacheService) CleanOlderThan(duration time.Duration) {
 
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 
 	for key, val := range cache.store {
 		if time.Since(val.CreatedAt) > duration {

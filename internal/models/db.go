@@ -3,22 +3,16 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-
-	"gorm.io/gorm"
 )
 
 // Apps service repository tables ===========================
 
 type AppsTopicT struct {
-	gorm.Model
-
 	ID   uint   `gorm:"primaryKey"`
 	Name string `gorm:"uniqueIndex,unique"`
 }
 
 type AppsInstancesT struct {
-	gorm.Model
-
 	ID          uint `gorm:"primaryKey"`
 	Name        string
 	Icon        string
@@ -77,6 +71,22 @@ type SSHCredentialsT struct {
 
 	SecurityID uint
 	Security   SSHSecureT `gorm:"foreignKey:SecurityID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+}
+
+func (c *SSHCredentialsT) ValueUser() string {
+	return c.Username
+}
+
+func (c *SSHCredentialsT) UsePrivateKey() bool {
+	return c.Security.PrivateKeyUse
+}
+
+func (c *SSHCredentialsT) Password() string {
+	return c.Security.Password
+}
+
+func (c *SSHCredentialsT) PrivateKey() []byte {
+	return []byte(c.Security.PrivateKey)
 }
 
 func (c *SSHCredentialsT) Socket() string {

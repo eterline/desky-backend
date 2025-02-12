@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/eterline/desky-backend/internal/services/storage"
+	"github.com/eterline/desky-backend/pkg/storage"
 )
 
 type DefaultRepository struct {

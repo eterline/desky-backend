@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/services/storage"
+	"github.com/eterline/desky-backend/pkg/storage"
 )
 
 type AppsRepository struct {
@@ -28,6 +28,15 @@ func (r *AppsRepository) ListTopic() ([]models.AppsTopicT, error) {
 
 func (r *AppsRepository) CreateTopic(topic *models.AppsTopicT) error {
 	return r.db.Create(topic).Error
+}
+
+func (r *AppsRepository) Edit(app *models.AppsInstancesT) error {
+
+	if err := r.db.First(new(models.AppsInstancesT), "ID = ?", app.ID).Error; err != nil {
+		return err
+	}
+
+	return r.db.Model(app).Updates(app).Error
 }
 
 func (r *AppsRepository) DeleteTopic(name string) error {

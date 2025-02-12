@@ -7,7 +7,7 @@ import (
 
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/services/storage"
+	"github.com/eterline/desky-backend/pkg/storage"
 )
 
 var (
@@ -38,11 +38,11 @@ func main() {
 	err := db.Connect()
 	defer db.Close()
 	if err != nil {
-		panic(fmt.Sprintf("db connect error: %s", err.Error()))
+		panic(fmt.Sprintf("db connect error: %v", err))
 	}
 
 	if err := db.MigrateTables(migrateList...); err != nil {
-		panic(fmt.Sprintf("db migration error: %s", err.Error()))
+		panic(fmt.Sprintf("db migration error: %v", err))
 	}
 
 	fmt.Printf("db migrated to: %s \n", db.Source())

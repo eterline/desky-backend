@@ -87,10 +87,22 @@ func (sc *AppsService) Delete(topic string, topicQuery int) error {
 	return nil
 }
 
-func (sc *AppsService) Edit(topic string, topicQuery int, app models.AppDetails) error {
+func (sc *AppsService) Edit(app *models.AppDetails) error {
 
 	sc.Lock()
 	defer sc.Unlock()
+
+	appInstance := &models.AppsInstancesT{
+		ID:          app.ID,
+		Name:        app.Name,
+		Description: app.Description,
+		Link:        app.Link,
+		Icon:        app.Icon,
+	}
+
+	if err := sc.repository.Edit(appInstance); err != nil {
+		return err
+	}
 
 	return nil
 }

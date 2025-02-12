@@ -92,10 +92,10 @@ func (s *SysHandlerGroup) StatsWS(w http.ResponseWriter, r *http.Request) (op st
 		}
 	}
 
-	so := handler.NewSocketWithContext(s.ctx, conn)
+	so := handler.NewSocketWithContext(s.ctx, conn, log)
 	so.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
 
-	go func(so *handler.WebSocketHandle) {
+	go func(so *handler.WsHandlerWrap) {
 
 		ticker := time.NewTicker(time.Second * WS_Message_delay)
 		defer ticker.Stop()
@@ -198,14 +198,14 @@ func (s *SysHandlerGroup) StatsWS(w http.ResponseWriter, r *http.Request) (op st
 // 				return op, nil
 
 // 			default:
-// 				log.Errorf("websocket tty error: %s", err.Error())
+// 				log.Errorf("websocket tty error: %v", err)
 // 				return op, e
 // 			}
 // 		}
 
 // 		resp, err := system.HandleCommand(msgContent)
 // 		if err != nil {
-// 			log.Errorf("websocket tty error: %s", err.Error())
+// 			log.Errorf("websocket tty error: %v", err)
 // 		} else {
 // 			log.Infof("command: '%s' - executed by request: %s", resp.Command, connection.RemoteAddr())
 // 		}

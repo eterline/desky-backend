@@ -8,8 +8,8 @@ import (
 
 	"github.com/eterline/desky-backend/internal/application"
 	"github.com/eterline/desky-backend/internal/configuration"
-	"github.com/eterline/desky-backend/internal/services/storage"
 	"github.com/eterline/desky-backend/pkg/logger"
+	"github.com/eterline/desky-backend/pkg/storage"
 )
 
 func init() {

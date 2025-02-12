@@ -11,7 +11,7 @@ import (
 type AppsService interface {
 	Append(topic string, app models.AppDetails) error
 	Delete(topic string, topicQuery int) error
-	Edit(topic string, topicQuery int, app models.AppDetails) error
+	Edit(app *models.AppDetails) error
 	Table() (models.AppsTable, error)
 }
 
@@ -73,8 +73,8 @@ func (as *AppsHandlerGroup) ShowTable(w http.ResponseWriter, r *http.Request) (o
 //	@Failure		501	{object}	handler.APIErrorResponse
 //	@Success		200	{object}	handler.APIResponse
 //	@Router			/apps/table/{topic} [post]
-func (as *AppsHandlerGroup) AppendApp(w http.ResponseWriter, r *http.Request) (op string, err error) {
-	op = "handler.applications.append-app"
+func (as *AppsHandlerGroup) CreateApp(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handler.applications.create-app"
 
 	q, err := handler.ParseURLParameters(r, handler.StrOpts("topic"))
 	if err != nil {
@@ -90,6 +90,43 @@ func (as *AppsHandlerGroup) AppendApp(w http.ResponseWriter, r *http.Request) (o
 
 	if err = as.Apps.Append(q.GetStr("topic"), *data); err == nil {
 		handler.StatusCreated(w, "app added")
+	}
+
+	if appsfile.IsAppsFileServiceError(err) {
+		err = handler.NewErrorResponse(
+			http.StatusNotImplemented,
+			err,
+		)
+	}
+
+	return op, err
+}
+
+func (as *AppsHandlerGroup) EditApp(w http.ResponseWriter, r *http.Request) (op string, err error) {
+	op = "handler.applications.edit-app"
+
+	q, err := handler.ParseURLParameters(r, handler.NumOpts("id"))
+	if err != nil {
+		return op, err
+	}
+
+	form := new(models.AppUpdateFrom)
+	handler.DecodeRequest(r, form)
+
+	if err := handler.Validate(form); err != nil {
+		return op, err
+	}
+
+	data := &models.AppDetails{
+		ID:          uint(q.GetInt("id")),
+		Name:        form.Name,
+		Description: form.Description,
+		Link:        form.Link,
+		Icon:        form.Icon,
+	}
+
+	if err = as.Apps.Edit(data); err == nil {
+		handler.StatusCreated(w, "app edited")
 	}
 
 	if appsfile.IsAppsFileServiceError(err) {

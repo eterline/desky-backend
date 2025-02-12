@@ -1,7 +1,8 @@
-package sshlander
+package ssh
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -12,8 +13,10 @@ import (
 	sshlander "github.com/eterline/desky-backend/internal/services/ssh-lander"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/go-ping/ping"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
 )
 
 type SSHRepository interface {
@@ -24,17 +27,18 @@ type SSHRepository interface {
 }
 
 type SSHLanderControllers struct {
-	ctx     context.Context
+	ctx context.Context
+
+	term    sshlander.TerminalType
 	repoSSH SSHRepository
 	websock *websocket.Upgrader
 
 	logging *logrus.Logger
+
+	sshMu sync.Mutex
 }
 
-func Init(
-	ctx context.Context,
-	repo SSHRepository,
-) *SSHLanderControllers {
+func Init(ctx context.Context, repo SSHRepository) *SSHLanderControllers {
 	return &SSHLanderControllers{
 		ctx:     ctx,
 		repoSSH: repo,
@@ -44,6 +48,8 @@ func Init(
 			ReadBufferSize:    1024,
 			WriteBufferSize:   1024,
 		},
+
+		term: sshlander.XtermColored,
 
 		logging: logger.ReturnEntry().Logger,
 	}
@@ -187,89 +193,119 @@ func getPingedList(hostsData []models.SSHCredentialsT) []models.SSHTestObject {
 func (mc *SSHLanderControllers) ConnectionWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "sshlander.connection[WS]"
 
-	q, err := handler.ParseURLParameters(r, handler.NumOpts("id"))
-	if err != nil {
-		return op, err
-	}
+	mc.sshMu.Lock()
+	defer mc.sshMu.Unlock()
 
 	if !websocket.IsWebSocketUpgrade(r) {
 		return op, handler.StatusOK(w, "websocket connection only")
 	}
 
-	credentials, err := mc.repoSSH.QueryById(q.GetInt("id"))
+	// ================================================================
+
+	q, err := handler.ParseURLParameters(r, handler.NumOpts("id"))
 	if err != nil {
 		return op, err
 	}
 
-	conn, err := mc.websock.Upgrade(w, r, nil)
+	baseCredentials, err := mc.repoSSH.QueryById(q.GetInt("id"))
 	if err != nil {
 		return op, err
 	}
 
-	socket := handler.NewSocketWithContext(mc.ctx, conn)
-	mc.logging.Warnf("ssh external connection: %s. user: %s", credentials.Host, credentials.Username)
-	return op, mc.ProcessSSH(socket, credentials)
+	// ================================================================
+
+	wsConn, err := mc.websock.Upgrade(w, r, nil)
+	if err != nil {
+		return op, err
+	}
+
+	socket := handler.NewSocketWithContext(mc.ctx, wsConn, mc.logging)
+
+	xTerm, err := mc.initTerm(socket.UUID(), baseCredentials, ssh.InsecureIgnoreHostKey())
+	if err != nil {
+		socket.Exit()
+		return op, err
+	}
+
+	return op, mc.wsSSH(socket, xTerm)
 }
 
-func (mc *SSHLanderControllers) ProcessSSH(sock *handler.WebSocketHandle, data *models.SSHCredentialsT) error {
+func (mc *SSHLanderControllers) initTerm(
+	uuid uuid.UUID,
+	creds sshlander.SessionCredentials,
+	callback ssh.HostKeyCallback,
+) (*sshlander.TerminalSession, error) {
 
-	ssh := sshlander.New(data.Username)
-
-	if data.Security.PrivateKeyUse {
-		ssh.SetupAuth(sshlander.PrivateKeyMethod, data.Security.PrivateKey)
-	} else {
-		ssh.SetupAuth(sshlander.PasswordMethod, data.Security.Password)
+	sshSession, err := sshlander.NewClientSession(creds, callback, uuid)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := ssh.Connect(mc.ctx, data.Socket()); err != nil {
-		mc.logging.Errorf("ssh connection error: %s", err.Error())
-		sock.WriteCloseError(err)
-		return err
+	sshTerm, err := sshlander.ConnectTerminal(mc.ctx, sshSession, mc.term)
+	if err != nil {
+		sshSession.CloseDial()
+		return nil, err
 	}
 
-	sock.AwaitClose(
-		websocket.CloseNormalClosure,
-		websocket.CloseGoingAway,
+	mc.logging.Infof(
+		"ssh terminal connected: %s uuid %s:",
+		sshSession.Instance(), uuid.String(),
 	)
 
-	go func(
-		socket *handler.WebSocketHandle,
-		ssh *sshlander.SSHLanderService,
-		data *models.SSHCredentialsT,
-	) {
+	return sshTerm, nil
+}
+
+func (mc *SSHLanderControllers) wsSSH(socket *handler.WsHandlerWrap, term *sshlander.TerminalSession) error {
+
+	go func() {
 
 		defer func() {
+			mc.logging.Infof("stdout closed: %s", term.UUID())
+			mc.logging.Infof("ssh terminal closed: %s", term.UUID())
 			socket.Exit()
-			ssh.Exit()
-			mc.logging.Infof("ssh connection closed: %s", data.Host)
+			mc.logging.Infof("ws closed: %s", term.UUID())
 		}()
 
-		msg := socket.AwaitMessage(new(models.SSHSessionRequest))
+		// res := new(models.SSHResponseWS)
 
-		for {
-			select {
-
-			case <-socket.Done():
-				return
-
-			case m := <-msg:
-				val, ok := m.(*models.SSHSessionRequest)
-				if !ok {
-					continue
-				}
-
-				mc.logging.Infof("ssh command: %s. host: %s", val.Command, data.Host)
-
-				response := ssh.SendCommand(val.Command)
-				for output := range response {
-					socket.WriteJSON(models.SSHSessionResponse{
-						Response: output,
-					})
-				}
-			}
+		for batch := range term.TerminalRead() {
+			// res.Line = string(batch)
+			socket.WriteBase64(batch)
 		}
 
-	}(sock, ssh, data)
+	}()
+
+	data := new(models.SSHRequestWS)
+
+	for msg := range socket.AwaitMessage(
+		websocket.CloseNormalClosure,
+		websocket.CloseGoingAway,
+	) {
+
+		data = new(models.SSHRequestWS)
+		if err := json.Unmarshal(msg.Body, data); err != nil {
+			mc.logging.Error(err)
+			continue
+		}
+
+		if err := term.SendTerminal(data.Command); err != nil {
+			socket.WriteJSON(models.SSHResponseWS{
+				Line: fmt.Sprintf("stdin error: %v", err),
+			})
+			mc.logging.Error(err)
+			return err
+		}
+
+		mc.logging.Infof(
+			"ssh sent command: '%s' uuid: %s ",
+			data.Command,
+			term.SSHSession.UUID(),
+		)
+	}
+
+	if err := term.SendTerminal(sshlander.ExitCommand); err != nil {
+		mc.logging.Errorf("send 'exit' error: %v uuid: %s", err, term.UUID())
+	}
 
 	return nil
 }

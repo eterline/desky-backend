@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -41,6 +42,16 @@ func (s *StorageSQLite) Source() string {
 
 // ====================================================================
 
+type StoragePostgres struct {
+	username string
+	password string
+	host     string
+	port     uint16
+	dbname   string
+	sslmode  bool
+	tz       string
+}
+
 func NewStoragePostgres(
 	username, password, host string,
 	port uint16,
@@ -60,16 +71,6 @@ func NewStoragePostgres(
 		sslmode:  sslmode,
 		tz:       timeZone,
 	}
-}
-
-type StoragePostgres struct {
-	username string
-	password string
-	host     string
-	port     uint16
-	dbname   string
-	sslmode  bool
-	tz       string
 }
 
 func (s *StoragePostgres) Socket() gorm.Dialector {
@@ -97,5 +98,69 @@ func (s *StoragePostgres) StorageType() string {
 }
 
 func (s *StoragePostgres) Source() string {
+	return s.dbname
+}
+
+// ====================================================================
+
+type MySQLCharset string
+
+const (
+	CharsetUTF8MB4 MySQLCharset = "utf8mb4"
+	CharsetUTF8    MySQLCharset = "utf8"
+	CharsetLATIN1  MySQLCharset = "latin1"
+	CharsetASCII   MySQLCharset = "ascii"
+	CharsetUCS2    MySQLCharset = "ucs2"
+	CharsetCP1251  MySQLCharset = "cp1251"
+	CharsetGBK     MySQLCharset = "gbk"
+	CharsetSJIS    MySQLCharset = "sjis"
+)
+
+type StorageMySQL struct {
+	password, username string
+	dbname, host       string
+
+	port uint16
+
+	charset   string
+	parseTime bool
+}
+
+func NewStorageMySQL(
+	username, password, host string,
+	port uint16,
+	dbname string,
+	charset MySQLCharset,
+	parseTime bool,
+) StorageProvider {
+
+	return &StorageMySQL{
+		username:  username,
+		password:  password,
+		host:      host,
+		port:      port,
+		dbname:    dbname,
+		charset:   string(charset),
+		parseTime: parseTime,
+	}
+}
+
+func (s *StorageMySQL) Socket() gorm.Dialector {
+
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s:%v)/%s?charset=%s&parseTime=%v",
+		s.username, s.password,
+		s.host, s.port, s.dbname,
+		s.charset, s.parseTime,
+	)
+
+	return mysql.Open(dsn)
+}
+
+func (s *StorageMySQL) StorageType() string {
+	return "mysql"
+}
+
+func (s *StorageMySQL) Source() string {
 	return s.dbname
 }

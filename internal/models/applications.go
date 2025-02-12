@@ -10,4 +10,11 @@ type (
 		Link        string `json:"link" validate:"required,url" example:"https://nextcloud.lan"`
 		Icon        string `json:"icon" validate:"required" example:"nextcloud"`
 	}
+
+	AppUpdateFrom struct {
+		Name        string `json:"name" validate:"required,min=3,max=20"`
+		Description string `json:"description" validate:"required"`
+		Link        string `json:"link" validate:"required,url"`
+		Icon        string `json:"icon" validate:"required"`
+	}
 )

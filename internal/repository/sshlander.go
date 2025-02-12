@@ -2,20 +2,20 @@ package repository
 
 import (
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/services/storage"
+	"github.com/eterline/desky-backend/pkg/storage"
 )
 
-type SSHLanderRepository struct {
+type SSHRepository struct {
 	DefaultRepository
 }
 
-func NewSSHLanderRepository(db *storage.DB) *SSHLanderRepository {
-	return &SSHLanderRepository{
+func NewSSHLanderRepository(db *storage.DB) *SSHRepository {
+	return &SSHRepository{
 		NewDefaultRepository(db),
 	}
 }
 
-func (r *SSHLanderRepository) QueryAll() ([]models.SSHCredentialsT, error) {
+func (r *SSHRepository) QueryAll() ([]models.SSHCredentialsT, error) {
 
 	credentialsList := make([]models.SSHCredentialsT, 0)
 
@@ -25,7 +25,7 @@ func (r *SSHLanderRepository) QueryAll() ([]models.SSHCredentialsT, error) {
 	return credentialsList, nil
 }
 
-func (r *SSHLanderRepository) AddHost(
+func (r *SSHRepository) AddHost(
 	username string,
 	host string,
 	port uint16,
@@ -51,7 +51,7 @@ func (r *SSHLanderRepository) AddHost(
 	return nil
 }
 
-func (r *SSHLanderRepository) Delete(id int) error {
+func (r *SSHRepository) Delete(id int) error {
 
 	if err := r.db.Unscoped().Delete(new(models.SSHCredentialsT), "ID = ?", id).Error; err != nil {
 		return err
@@ -59,7 +59,7 @@ func (r *SSHLanderRepository) Delete(id int) error {
 	return nil
 }
 
-func (r *SSHLanderRepository) QueryById(id int) (*models.SSHCredentialsT, error) {
+func (r *SSHRepository) QueryById(id int) (*models.SSHCredentialsT, error) {
 
 	sshCredentials := new(models.SSHCredentialsT)
 

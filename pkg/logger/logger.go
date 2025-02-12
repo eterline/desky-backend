@@ -26,10 +26,32 @@ type LogWorker struct {
 	*logrus.Entry
 }
 
+func testLoggerInit() {
+	if entry == nil {
+		panic("logger singletone did not initialized")
+	}
+}
+
 func ReturnEntry() LogWorker {
+	testLoggerInit()
+
 	return LogWorker{entry}
 }
 
+// HookLevelWriter appends logger hook with certain levels
+func HookLevelWriter(w io.Writer, levels ...logrus.Level) bool {
+	testLoggerInit()
+
+	hook := &writerHook{
+		Writer:    []io.Writer{w},
+		LogLevels: levels,
+	}
+
+	entry.Logger.AddHook(hook)
+	return true
+}
+
+// HookLevelWriter initilizes
 func InitLogger(options ...LoggerOptionFunc) error {
 	opts := mustOptions(options...)
 

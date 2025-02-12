@@ -66,10 +66,10 @@ func (mc *MonitoringControllers) MonitorWS(w http.ResponseWriter, r *http.Reques
 		return op, err
 	}
 
-	so := handler.NewSocketWithContext(mc.ctx, conn)
+	so := handler.NewSocketWithContext(mc.ctx, conn, log)
 	so.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
 
-	go func(so *handler.WebSocketHandle, ctx context.Context) {
+	go func(so *handler.WsHandlerWrap, ctx context.Context) {
 
 		mon, stop := mc.monitor.Pool()
 		defer stop()

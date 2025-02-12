@@ -10,16 +10,17 @@ import (
 	"github.com/eterline/desky-backend/internal/server/controllers/exporter"
 	"github.com/eterline/desky-backend/internal/server/controllers/frontend"
 	"github.com/eterline/desky-backend/internal/server/controllers/monitoring"
-	"github.com/eterline/desky-backend/internal/server/controllers/sshlander"
+	"github.com/eterline/desky-backend/internal/server/controllers/parameters"
+	ssh "github.com/eterline/desky-backend/internal/server/controllers/sshlander"
 	"github.com/eterline/desky-backend/internal/server/controllers/sys"
 	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
 	"github.com/eterline/desky-backend/internal/services/apps/appsdb"
 	"github.com/eterline/desky-backend/internal/services/authorization"
 	exporters "github.com/eterline/desky-backend/internal/services/exporter"
 	"github.com/eterline/desky-backend/internal/services/router"
-	"github.com/eterline/desky-backend/internal/services/storage"
 	"github.com/eterline/desky-backend/internal/services/system"
 	"github.com/eterline/desky-backend/pkg/logger"
+	"github.com/eterline/desky-backend/pkg/storage"
 	"github.com/sirupsen/logrus"
 )
 
@@ -59,6 +60,7 @@ func api(ctx context.Context) (rt *router.RouterService) {
 	rt.Mount("/auth", controllerAuth())
 	rt.Mount("/exporter", controllerExporter())
 	rt.Mount("/ssh", controllerSSH(ctx))
+	rt.Mount("/parameters", controllerParameters())
 
 	return
 }
@@ -73,10 +75,12 @@ func controllerApps() (routes *router.RouterService) {
 
 	routes = router.MakeSubroute(
 		router.NewHandler(router.GET, "/table", srv.ShowTable),
-		router.NewHandler(router.POST, "/table/{topic}", srv.AppendApp),
+		router.NewHandler(router.POST, "/table/{topic}", srv.CreateApp),
 
 		router.NewHandler(router.DELETE, "/table/{id}", srv.DeleteAppById),
 		router.NewHandler(router.DELETE, "/table/{topic}/{number}", srv.DeleteApp),
+
+		router.NewHandler(router.PATCH, "/table/{id}", srv.EditApp),
 	)
 
 	return
@@ -146,7 +150,7 @@ func controllerSSH(ctx context.Context) (routes *router.RouterService) {
 
 	sshRepository := repository.NewSSHLanderRepository(databaseInstance)
 
-	group := sshlander.Init(ctx, sshRepository)
+	group := ssh.Init(ctx, sshRepository)
 
 	routes = router.MakeSubroute(
 		router.NewHandler(router.GET, "/list", group.ListHosts),
@@ -156,6 +160,21 @@ func controllerSSH(ctx context.Context) (routes *router.RouterService) {
 		router.NewHandler(router.GET, "/ping", group.TestHosts),
 
 		router.NewHandler(router.GET, "/connect/{id}", group.ConnectionWS),
+	)
+
+	return
+}
+
+func controllerParameters() (routes *router.RouterService) {
+
+	coll := logger.NewLoggerCollector()
+	logger.HookLevelWriter(coll, logrus.ErrorLevel)
+
+	group := parameters.Init(coll)
+
+	routes = router.MakeSubroute(
+		router.NewHandler(router.GET, "/logs", group.GetLogs),
+		router.NewHandler(router.GET, "/errors", group.Errors),
 	)
 
 	return

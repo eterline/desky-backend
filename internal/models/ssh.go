@@ -57,10 +57,11 @@ type SSHTestObject struct {
 
 // ====================================================
 
-type SSHSessionResponse struct {
-	Response string `json:"response"`
+type SSHResponseWS struct {
+	Line string `json:"line,omitempty"`
+	Err  string `json:"err,omitempty"`
 }
 
-type SSHSessionRequest struct {
-	Command string `json:"command" validate:"required"`
+type SSHRequestWS struct {
+	Command string `json:"command"`
 }

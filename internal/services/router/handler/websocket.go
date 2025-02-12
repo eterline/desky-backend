@@ -2,34 +2,68 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
-type WebSocketHandle struct {
+type WsLogger interface {
+	Info(args ...interface{})
+	Error(args ...interface{})
+
+	Infof(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+}
+
+type WsHandlerWrap struct {
+	uuid uuid.UUID
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	logger WsLogger
+
 	Connect *websocket.Conn
-	ctx     context.Context
-	cancel  context.CancelFunc
 }
 
-func NewSocket(conn *websocket.Conn) *WebSocketHandle {
-	return NewSocketWithContext(context.Background(), conn)
+func NewSocket(conn *websocket.Conn) *WsHandlerWrap {
+	return NewSocketWithContext(context.Background(), conn, nil)
 }
 
-func NewSocketWithContext(ctx context.Context, conn *websocket.Conn) *WebSocketHandle {
+func NewSocketWithContext(ctx context.Context, conn *websocket.Conn, logger WsLogger) *WsHandlerWrap {
 	ctx, cancel := context.WithCancel(ctx)
+	uuid := uuid.New()
 
-	return &WebSocketHandle{
-		Connect: conn,
+	if logger != nil {
+		logger.Infof("new socket connection: %s uuid: %s", conn.RemoteAddr().String(), uuid.String())
+	}
+
+	return &WsHandlerWrap{
+		uuid:    uuid,
 		ctx:     ctx,
 		cancel:  cancel,
+		Connect: conn,
 	}
 }
 
-func (h *WebSocketHandle) AwaitClose(codes ...int) {
+func (h *WsHandlerWrap) UUID() uuid.UUID {
+	return h.uuid
+}
+
+func (h *WsHandlerWrap) AwaitClose(codes ...int) {
 	go func() {
 
+		defer func() {
+			if h.logger != nil {
+				h.logger.Infof("socket reader closed uuid: %s", h.uuid.String())
+			}
+		}()
+
 		if h.Connect == nil {
+			if h.logger != nil {
+				h.logger.Errorf("socket uuid: %s connect is nil", h.uuid.String())
+			}
 			h.cancel()
 			return
 		}
@@ -45,6 +79,9 @@ func (h *WebSocketHandle) AwaitClose(codes ...int) {
 					_, _, err := h.Connect.ReadMessage()
 
 					if err != nil {
+						if h.logger != nil && !websocket.IsCloseError(err, codes...) {
+							h.logger.Errorf("socket uuid: %s error: %v", h.uuid.String(), err)
+						}
 						h.Connect.Close()
 						h.cancel()
 						return
@@ -55,13 +92,34 @@ func (h *WebSocketHandle) AwaitClose(codes ...int) {
 	}()
 }
 
-func (h *WebSocketHandle) AwaitMessage(v any) <-chan any {
+type SocketMessage struct {
+	Type int
+	Body []byte
+}
 
-	channel := make(chan any, 1)
+func (m *SocketMessage) String() string {
+	return string(m.Body)
+}
+
+func (h *WsHandlerWrap) AwaitMessage(closeCodes ...int) <-chan SocketMessage {
+	channel := make(chan SocketMessage, 10)
 
 	go func() {
 
-		defer close(channel)
+		defer func() {
+			if h.logger != nil {
+				h.logger.Infof("socket reader closed uuid: %s", h.uuid.String())
+			}
+			close(channel)
+		}()
+
+		if h.Connect == nil {
+			if h.logger != nil {
+				h.logger.Errorf("socket uuid: %s connect is nil", h.uuid.String())
+			}
+			h.cancel()
+			return
+		}
 
 		for {
 			select {
@@ -70,12 +128,21 @@ func (h *WebSocketHandle) AwaitMessage(v any) <-chan any {
 				return
 
 			default:
-				err := h.Connect.ReadJSON(v)
+				msgType, bytes, err := h.Connect.ReadMessage()
+
 				if err != nil {
-					<-h.ctx.Done()
+					if h.logger != nil && !websocket.IsCloseError(err, closeCodes...) {
+						h.logger.Errorf("socket uuid: %s error: %v", h.uuid.String(), err)
+					}
+					h.Connect.Close()
+					h.cancel()
 					return
 				}
-				channel <- v
+
+				channel <- SocketMessage{
+					Type: msgType,
+					Body: bytes,
+				}
 			}
 		}
 	}()
@@ -83,26 +150,33 @@ func (h *WebSocketHandle) AwaitMessage(v any) <-chan any {
 	return channel
 }
 
-func (h *WebSocketHandle) Done() <-chan struct{} {
+func (h *WsHandlerWrap) Done() <-chan struct{} {
 	return h.ctx.Done()
 }
 
-func (h *WebSocketHandle) Exit() {
+func (h *WsHandlerWrap) Exit() {
 	h.Connect.Close()
 }
 
-func (h *WebSocketHandle) WriteJSON(v any) error {
+func (h *WsHandlerWrap) WriteBytes(msg []byte) error {
+	return h.Connect.WriteMessage(websocket.BinaryMessage, msg)
+}
 
-	defer func() {
-		if recover() != nil {
-			return
-		}
-	}()
+func (h *WsHandlerWrap) WriteBase64(msg []byte) error {
 
+	encodedSize := base64.StdEncoding.EncodedLen(len(msg))
+	buf := make([]byte, encodedSize)
+
+	base64.StdEncoding.Encode(buf, msg)
+
+	return h.Connect.WriteMessage(websocket.TextMessage, buf)
+}
+
+func (h *WsHandlerWrap) WriteJSON(v any) error {
 	return h.Connect.WriteJSON(v)
 }
 
-func (h *WebSocketHandle) WriteError(err error) error {
+func (h *WsHandlerWrap) WriteError(err error) error {
 
 	defer func() {
 		if recover() != nil {
@@ -118,7 +192,7 @@ func (h *WebSocketHandle) WriteError(err error) error {
 	return h.WriteJSON(e)
 }
 
-func (h *WebSocketHandle) WriteCloseError(err error) {
+func (h *WsHandlerWrap) WriteCloseError(err error) {
 
 	defer func() {
 		if recover() != nil {

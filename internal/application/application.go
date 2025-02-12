@@ -67,6 +67,6 @@ func Exec(
 	<-ctx.Done()
 
 	if err := srv.Stop(); err != nil {
-		log.Errorf("server close error: %s", err.Error())
+		log.Errorf("server close error: %v", err)
 	}
 }
