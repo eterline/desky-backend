@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -10,6 +11,10 @@ import (
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/eterline/desky-backend/pkg/storage"
+)
+
+var (
+	ValueDBname = "desky.db"
 )
 
 func init() {
@@ -21,6 +26,10 @@ func init() {
 	}
 
 	config := configuration.GetConfig()
+
+	if name := os.Getenv("DESKY_DB_NAME"); name != "" {
+		ValueDBname = name
+	}
 
 	if err := logger.InitLogger(
 		logger.WithDevEnvBool(config.DevelopEnv),
@@ -48,7 +57,7 @@ func main() {
 
 	// ================= Database parameters =================
 
-	db := storage.New(storage.NewStorageSQLite("desky.db"), logger.InitStorageLogger())
+	db := storage.New(storage.NewStorageSQLite(ValueDBname), logger.InitStorageLogger())
 
 	err := db.Connect()
 	if err != nil {
