@@ -72,34 +72,43 @@ func (a *AgentMonitorService) List() (data []models.SessionCredentials) {
 	return
 }
 
-func (a *AgentMonitorService) Pool() (ch chan models.FetchedResponse, cancel context.CancelFunc) {
-	ch = make(chan models.FetchedResponse)
+func (a *AgentMonitorService) Pool() (ch chan any, cancel context.CancelFunc) {
+	ch = make(chan any)
 	ctx, cancel := context.WithCancel(a.ctx)
 
-	go func(ch chan<- models.FetchedResponse) {
+	go func() {
 		tick := time.NewTicker(5 * time.Second)
 		defer tick.Stop()
+		defer close(ch)
 
 		for {
 			select {
-
 			case <-ctx.Done():
-				close(ch)
 				return
-
 			case <-tick.C:
-				for _, session := range a.sessions {
-					go func(ch chan<- models.FetchedResponse) {
-						ch <- fetchAll(session)
-					}(ch)
-				}
-
+				a.fetchSessions(ctx, ch)
 			}
 		}
-
-	}(ch)
+	}()
 
 	return
+}
+
+func (a *AgentMonitorService) fetchSessions(ctx context.Context, ch chan<- any) {
+	for _, session := range a.sessions {
+		go func(s Session) {
+			data, _ := fetchSingle(s)
+			if ctx.Err() != nil {
+				return
+			}
+
+			select {
+			case ch <- data:
+			case <-ctx.Done():
+				return
+			}
+		}(session)
+	}
 }
 
 func fetchAll(s Session) models.FetchedResponse {
@@ -121,7 +130,18 @@ func fetchAll(s Session) models.FetchedResponse {
 	return data
 }
 
-func fetchAllToChannel(s Session, ch chan<- models.FetchedResponse) {
-	data := fetchAll(s)
-	ch <- data
+func fetchSingle(s Session) (models.FetchedResponseSingle, bool) {
+
+	data := models.FetchedResponseSingle{
+		ID: s.ID,
+	}
+
+	info, err := s.Parameter("all")
+	if info == nil || err != nil {
+		return data, false
+	}
+
+	data.Data = info
+
+	return data, true
 }

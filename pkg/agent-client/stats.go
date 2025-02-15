@@ -56,11 +56,13 @@ func (a *DeskyAgent) Parameter(exporter string) (any, error) {
 		return nil, err
 	}
 
-	if err := req.Resolve(data); err != nil {
+	datas := &AgentSingleObject{}
+
+	if err := req.Resolve(datas); err != nil {
 		return nil, err
 	}
 
-	return data, nil
+	return datas, nil
 }
 
 func info(api *url.URL, token keyBerearer) (data *HostInfo, ok bool) {
@@ -126,6 +128,9 @@ func (a *DeskyAgent) modelFabric(exporter string) (data any, url string) {
 
 	case "partitions":
 		data = new(PartitionList)
+
+	case "all":
+		data = new(AgentSingleObject)
 
 	default:
 		data = nil

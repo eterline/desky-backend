@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/models"
@@ -45,7 +44,6 @@ func (au *AuthHandlerGroup) Register(w http.ResponseWriter, r *http.Request) (op
 	user := new(models.DeskyUser)
 
 	if err := handler.DecodeRequest(r, user); err != nil {
-		fmt.Println(err)
 		return op, err
 	}
 	log.Debugf("register request user: %s", utils.PrettyString(user))

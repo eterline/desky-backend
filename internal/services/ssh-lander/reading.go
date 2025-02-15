@@ -42,8 +42,6 @@ func (ls *PipeWorker) ReadLine(delim byte) (outputLine string) {
 		return fmt.Sprintf("stdout error: %v", err)
 	}
 
-	fmt.Println(line)
-
 	outputLine = ls.filter.ReplaceAllString(line, "")
 	// outputLine = strings.TrimSpace(outputLine)
 

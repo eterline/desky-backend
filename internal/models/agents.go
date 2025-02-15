@@ -12,3 +12,8 @@ type FetchedResponse struct {
 	ID   string         `json:"id"`
 	Data map[string]any `json:"data"`
 }
+
+type FetchedResponseSingle struct {
+	ID   string `json:"id"`
+	Data any    `json:"data"`
+}

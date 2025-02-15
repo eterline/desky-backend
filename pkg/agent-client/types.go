@@ -35,6 +35,16 @@ func (key keyBerearer) Berearer() string {
 
 // Represent objectsAPI
 
+type AgentSingleObject struct {
+	Host        *Host          `json:"host"`
+	Cpu         *CPU           `json:"cpu"`
+	Load        *Load          `json:"load"`
+	RAM         *RAM           `json:"ram"`
+	Partitions  *PartitionList `json:"partitions"`
+	Ports       *Ports         `json:"ports"`
+	Temperature *SensorList    `json:"temperature"`
+}
+
 type (
 	Host struct {
 		Name         string  `json:"hostname"`

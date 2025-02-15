@@ -50,21 +50,21 @@ func ConnectTerminal(ctx context.Context, session *SSHSession, terminal Terminal
 	}
 
 	if err := session.sshSession.RequestPty(string(terminal), 80, 40, terminalSettings); err != nil {
-		fmt.Printf("err ssh: %v\n", err)
+
 		session.CloseDial()
 		return nil, NewError(session.uuid, fmt.Sprintf("xterm connection error: %v", err))
 	}
 
 	inPipe, err := session.sshSession.StdinPipe()
 	if err != nil {
-		fmt.Printf("err ssh: %v\n", err)
+
 		session.CloseDial()
 		return nil, NewError(session.uuid, fmt.Sprintf("failed to get stdin pipe: %v", err))
 	}
 
 	outPipe, err := session.sshSession.StdoutPipe()
 	if err != nil {
-		fmt.Printf("err ssh: %v\n", err)
+
 		inPipe.Close()
 		session.CloseDial()
 		return nil, NewError(session.uuid, fmt.Sprintf("failed to get stdout pipe: %v", err))
@@ -72,14 +72,14 @@ func ConnectTerminal(ctx context.Context, session *SSHSession, terminal Terminal
 
 	errPipe, err := session.sshSession.StderrPipe()
 	if err != nil {
-		fmt.Printf("err ssh: %v\n", err)
+
 		inPipe.Close()
 		session.CloseDial()
 		return nil, NewError(session.uuid, fmt.Sprintf("failed to get stderr pipe: %v", err))
 	}
 
 	if err := session.sshSession.Shell(); err != nil {
-		fmt.Printf("err ssh: %v\n", err)
+
 		inPipe.Close()
 		session.CloseDial()
 		return nil, NewError(session.uuid, fmt.Sprintf("failed to start session shell: %v", err))
