@@ -51,3 +51,34 @@ func (ar DataErrors) Error() string {
 
 	return validatorErrString
 }
+
+// ====================== WebSocket types ======================
+
+type WebSocketLogger interface {
+	Info(args ...interface{})
+	Error(args ...interface{})
+
+	Infof(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+}
+
+type MessageFormat string
+
+const (
+	FormatBase64 MessageFormat = "base64"
+	FormatJSON   MessageFormat = "base64"
+)
+
+type WsSetupMessage struct {
+	UUID   string        `json:"uuid"`
+	Format MessageFormat `json:"format"`
+}
+
+type SocketMessage struct {
+	Type int
+	Body []byte
+}
+
+func (m *SocketMessage) String() string {
+	return string(m.Body)
+}

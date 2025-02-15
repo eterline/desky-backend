@@ -6,6 +6,7 @@ import (
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/server"
 	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
+	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,6 +20,9 @@ func Exec(
 	settings := new(ApplicationSettings)
 	settings.SetLanguage(LangEN)
 	settings.SetBG("none")
+	cache.Init()
+
+	cache.GetEntry().PushValue("bg", FileBG())
 
 	// ================= Services additional =================
 
@@ -50,6 +54,8 @@ func Exec(
 
 	router.Get("/config", settings.SettingHandler)
 	router.Get("/health", HealthHandler)
+	router.Get("/api/theme", settings.ThemeHandler)
+	router.Get("/api/background", settings.WriteBG)
 
 	srv.Router(router)
 

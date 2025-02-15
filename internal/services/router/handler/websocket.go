@@ -3,66 +3,98 @@ package handler
 import (
 	"context"
 	"encoding/base64"
+	"io"
+	"net"
+	"net/http"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
-type WsLogger interface {
-	Info(args ...interface{})
-	Error(args ...interface{})
-
-	Infof(format string, args ...interface{})
-	Errorf(format string, args ...interface{})
+type WebSocketProtoUpgrader interface {
+	Upgrade(http.ResponseWriter, *http.Request, http.Header) (WebSocketConnector, error)
 }
 
-type WsHandlerWrap struct {
-	uuid uuid.UUID
+type WebSocketConnector interface {
+	Close() error
+
+	LocalAddr() net.Addr
+	RemoteAddr() net.Addr
+
+	NextReader() (messageType int, r io.Reader, err error)
+	NextWriter(messageType int) (io.WriteCloser, error)
+
+	ReadMessage() (messageType int, p []byte, err error)
+	WriteMessage(messageType int, data []byte) error
+}
+
+type WebSocketHandler struct {
+	upgrade *websocket.Upgrader
+	logger  WebSocketLogger
+
+	ctx context.Context
+}
+
+func NewWebSocketHandler(ctx context.Context, u *websocket.Upgrader) *WebSocketHandler {
+	return &WebSocketHandler{
+		ctx:     ctx,
+		upgrade: u,
+	}
+}
+
+type WebSocketSession struct {
+	ID uuid.UUID
+
+	conn WebSocketConnector
+	log  WebSocketLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc
-
-	logger WsLogger
-
-	Connect *websocket.Conn
 }
 
-func NewSocket(conn *websocket.Conn) *WsHandlerWrap {
-	return NewSocketWithContext(context.Background(), conn, nil)
-}
+func (h *WebSocketHandler) HandleConnect(w http.ResponseWriter, r *http.Request) (*WebSocketSession, error) {
 
-func NewSocketWithContext(ctx context.Context, conn *websocket.Conn, logger WsLogger) *WsHandlerWrap {
-	ctx, cancel := context.WithCancel(ctx)
 	uuid := uuid.New()
 
-	if logger != nil {
-		logger.Infof("new socket connection: %s uuid: %s", conn.RemoteAddr().String(), uuid.String())
+	head := make(http.Header)
+	head.Set("UUID", uuid.String())
+
+	conn, err := h.upgrade.Upgrade(w, r, head)
+	if err != nil {
+		return nil, err
 	}
 
-	return &WsHandlerWrap{
-		uuid:    uuid,
-		ctx:     ctx,
-		cancel:  cancel,
-		Connect: conn,
+	if h.logger != nil {
+		h.logger.Infof("new socket connection: %s uuid: %s", conn.RemoteAddr().String(), uuid.String())
 	}
+
+	context, cancel := context.WithCancel(h.ctx)
+
+	session := &WebSocketSession{
+		ID:     uuid,
+		conn:   conn,
+		log:    h.logger,
+		ctx:    context,
+		cancel: cancel,
+	}
+
+	return session, nil
 }
 
-func (h *WsHandlerWrap) UUID() uuid.UUID {
-	return h.uuid
-}
-
-func (h *WsHandlerWrap) AwaitClose(codes ...int) {
+func (h *WebSocketSession) AwaitClose(codes ...int) {
 	go func() {
 
 		defer func() {
-			if h.logger != nil {
-				h.logger.Infof("socket reader closed uuid: %s", h.uuid.String())
+			if h.log != nil {
+				h.log.Infof("socket reader closed uuid: %s", h.ID.String())
 			}
+			h.conn.Close()
 		}()
 
-		if h.Connect == nil {
-			if h.logger != nil {
-				h.logger.Errorf("socket uuid: %s connect is nil", h.uuid.String())
+		if h.conn == nil {
+			if h.log != nil {
+				h.log.Errorf("socket uuid: %s connect is nil", h.ID.String())
 			}
 			h.cancel()
 			return
@@ -72,17 +104,16 @@ func (h *WsHandlerWrap) AwaitClose(codes ...int) {
 			for {
 				select {
 
-				case <-h.Done():
+				case <-h.ctx.Done():
 					return
 
 				default:
-					_, _, err := h.Connect.ReadMessage()
+					_, _, err := h.conn.ReadMessage()
 
 					if err != nil {
-						if h.logger != nil && !websocket.IsCloseError(err, codes...) {
-							h.logger.Errorf("socket uuid: %s error: %v", h.uuid.String(), err)
+						if h.log != nil && !websocket.IsCloseError(err, codes...) {
+							h.log.Errorf("socket uuid: %s error: %v", h.ID.String(), err)
 						}
-						h.Connect.Close()
 						h.cancel()
 						return
 					}
@@ -92,30 +123,21 @@ func (h *WsHandlerWrap) AwaitClose(codes ...int) {
 	}()
 }
 
-type SocketMessage struct {
-	Type int
-	Body []byte
-}
-
-func (m *SocketMessage) String() string {
-	return string(m.Body)
-}
-
-func (h *WsHandlerWrap) AwaitMessage(closeCodes ...int) <-chan SocketMessage {
-	channel := make(chan SocketMessage, 10)
+func (h *WebSocketSession) AwaitMessage(closeCodes ...int) <-chan SocketMessage {
+	channel := make(chan SocketMessage, 1)
 
 	go func() {
 
 		defer func() {
-			if h.logger != nil {
-				h.logger.Infof("socket reader closed uuid: %s", h.uuid.String())
+			if h.log != nil {
+				h.log.Infof("socket reader closed uuid: %s", h.ID.String())
 			}
 			close(channel)
 		}()
 
-		if h.Connect == nil {
-			if h.logger != nil {
-				h.logger.Errorf("socket uuid: %s connect is nil", h.uuid.String())
+		if h.conn == nil {
+			if h.log != nil {
+				h.log.Errorf("socket uuid: %s connect is nil", h.ID.String())
 			}
 			h.cancel()
 			return
@@ -124,17 +146,17 @@ func (h *WsHandlerWrap) AwaitMessage(closeCodes ...int) <-chan SocketMessage {
 		for {
 			select {
 
-			case <-h.Done():
+			case <-h.ctx.Done():
 				return
 
 			default:
-				msgType, bytes, err := h.Connect.ReadMessage()
+				msgType, bytes, err := h.conn.ReadMessage()
 
 				if err != nil {
-					if h.logger != nil && !websocket.IsCloseError(err, closeCodes...) {
-						h.logger.Errorf("socket uuid: %s error: %v", h.uuid.String(), err)
+					if h.log != nil && !websocket.IsCloseError(err, closeCodes...) {
+						h.log.Errorf("socket uuid: %s error: %v", h.ID.String(), err)
 					}
-					h.Connect.Close()
+					h.conn.Close()
 					h.cancel()
 					return
 				}
@@ -150,61 +172,104 @@ func (h *WsHandlerWrap) AwaitMessage(closeCodes ...int) <-chan SocketMessage {
 	return channel
 }
 
-func (h *WsHandlerWrap) Done() <-chan struct{} {
+func (h *WebSocketSession) SessionDone() <-chan struct{} {
 	return h.ctx.Done()
 }
 
-func (h *WsHandlerWrap) Exit() {
-	h.Connect.Close()
+func (h *WebSocketSession) WriteBytes(msg []byte) error {
+	return h.conn.WriteMessage(websocket.BinaryMessage, msg)
 }
 
-func (h *WsHandlerWrap) WriteBytes(msg []byte) error {
-	return h.Connect.WriteMessage(websocket.BinaryMessage, msg)
-}
-
-func (h *WsHandlerWrap) WriteBase64(msg []byte) error {
+func (h *WebSocketSession) WriteBase64(msg []byte) error {
 
 	encodedSize := base64.StdEncoding.EncodedLen(len(msg))
 	buf := make([]byte, encodedSize)
 
 	base64.StdEncoding.Encode(buf, msg)
 
-	return h.Connect.WriteMessage(websocket.TextMessage, buf)
+	return h.conn.WriteMessage(websocket.TextMessage, buf)
 }
 
-func (h *WsHandlerWrap) WriteJSON(v any) error {
-	return h.Connect.WriteJSON(v)
+func (h *WebSocketSession) Exit() error {
+	h.cancel()
+	return h.conn.Close()
 }
 
-func (h *WsHandlerWrap) WriteError(err error) error {
+type WebSocketWriting struct {
+	typeMessage int
+	conn        WebSocketConnector
 
-	defer func() {
-		if recover() != nil {
-			return
-		}
-	}()
-
-	e := NewWSHandlerError(
-		err.Error(),
-		false,
-	)
-
-	return h.WriteJSON(e)
+	mu sync.Mutex
 }
 
-func (h *WsHandlerWrap) WriteCloseError(err error) {
+func (h *WebSocketSession) InitWebSocketWriting(bin bool) *WebSocketWriting {
 
-	defer func() {
-		if recover() != nil {
-			return
-		}
-	}()
+	var typeMessage int
 
-	e := NewWSHandlerError(
-		err.Error(),
-		true,
-	)
+	if bin {
+		typeMessage = websocket.BinaryMessage
+	} else {
+		typeMessage = websocket.TextMessage
+	}
 
-	h.WriteJSON(e)
-	h.Exit()
+	return &WebSocketWriting{
+		typeMessage: typeMessage,
+		conn:        h.conn,
+	}
+}
+
+func (wr *WebSocketWriting) Write(p []byte) (n int, err error) {
+
+	wr.mu.Lock()
+	defer wr.mu.Unlock()
+
+	if err := wr.conn.WriteMessage(wr.typeMessage, p); err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
+}
+
+func (wr *WebSocketWriting) CloseWriting() error {
+
+	wr.mu.Lock()
+	defer wr.mu.Unlock()
+
+	return wr.conn.Close()
+}
+
+type WebSocketBase64Writing struct {
+	conn WebSocketConnector
+
+	mu sync.Mutex
+}
+
+func (h *WebSocketSession) InitWebSocketBase64Writing() *WebSocketBase64Writing {
+	return &WebSocketBase64Writing{
+		conn: h.conn,
+	}
+}
+
+func (wrb *WebSocketBase64Writing) Write(p []byte) (n int, err error) {
+
+	wrb.mu.Lock()
+	defer wrb.mu.Unlock()
+
+	buf := make([]byte, base64.StdEncoding.EncodedLen(len(p)))
+
+	base64.StdEncoding.Encode(buf, p)
+
+	if err := wrb.conn.WriteMessage(websocket.TextMessage, buf); err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
+}
+
+func (wrb *WebSocketBase64Writing) CloseWriting() error {
+
+	wrb.mu.Lock()
+	defer wrb.mu.Unlock()
+
+	return wrb.conn.Close()
 }

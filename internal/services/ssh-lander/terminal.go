@@ -11,6 +11,12 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var (
+	LineBreak      = []byte{0x0A}
+	CarriageReturn = []byte{0x0D}
+	ExitLine       = []byte{65, 78, 69, 74}
+)
+
 const (
 	CommandDetermit = "DESKY_DETERMIT_COMMANDLINE"
 	ExitCommand     = "exit"
@@ -124,6 +130,45 @@ func (term *TerminalSession) TerminalErrRead() <-chan []byte {
 	return readerChan
 }
 
+func (term *TerminalSession) FromTerminalLines(w io.Writer, lineDetermiter byte) error {
+
+	r := bufio.NewReader(term.stdOut)
+
+	for {
+		select {
+		case <-term.ctx.Done():
+			return nil
+
+		default:
+
+			line, err := r.ReadString(lineDetermiter)
+			if err != nil {
+				return err
+			}
+
+			if _, err := w.Write([]byte(line)); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func (term *TerminalSession) FromTerminalBytes(w io.Writer, wrSize int64) error {
+	for {
+		select {
+
+		case <-term.ctx.Done():
+			return nil
+
+		default:
+
+			if _, err := io.CopyN(w, term.stdOut, wrSize); err != nil {
+				return err
+			}
+		}
+	}
+}
+
 func (term *TerminalSession) TerminalRead() <-chan []byte {
 	readerChan := make(chan []byte, 10)
 
@@ -155,7 +200,26 @@ func (term *TerminalSession) TerminalRead() <-chan []byte {
 	return readerChan
 }
 
-func (term *TerminalSession) SendTerminal(data string) error {
+// =============== Terminal writing =======================
+
+// WriteLineBreak - sends '\n' to stdin
+func (term *TerminalSession) WriteLineBreak() error {
+	if _, err := term.stdIn.Write(LineBreak); err != nil {
+		return NewError(term.uuid, fmt.Sprintf("failed to enter command: %v", err))
+	}
+	return nil
+}
+
+// WriteLineBreak - sends 'exit' to stdin for session exit
+func (term *TerminalSession) WriteExit() error {
+	if _, err := term.stdIn.Write(ExitLine); err != nil {
+		return NewError(term.uuid, fmt.Sprintf("failed to send 'exit': %v", err))
+	}
+	return nil
+}
+
+// SendCleared - send stream to terminal stdin
+func (term *TerminalSession) Send(data []byte) error {
 
 	term.Lock()
 	defer term.Unlock()
@@ -164,9 +228,34 @@ func (term *TerminalSession) SendTerminal(data string) error {
 		return NewError(term.uuid, fmt.Sprintf("terminal session is closed"))
 	}
 
-	if _, err := fmt.Fprintf(term.stdIn, "%s; pwd; echo %s\n", data, CommandDetermit); err != nil {
-		fmt.Printf("err ssh: %v\n", err)
-		return NewError(term.uuid, fmt.Sprintf("failed to send command: %v", err))
+	if _, err := term.stdIn.Write(data); err != nil {
+		return NewError(term.uuid, fmt.Sprintf("failed to send string: %v", err))
+	}
+
+	if err := term.WriteLineBreak(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SendCleared - send stream to terminal stdin with something end
+// Example: '; pwd; echo %s", data, CommandDetermit'
+func (term *TerminalSession) SendWithPostfix(data []byte, postfix string) error {
+
+	term.Lock()
+	defer term.Unlock()
+
+	if term.ctx.Err() != nil {
+		return NewError(term.uuid, fmt.Sprintf("terminal session is closed"))
+	}
+
+	if _, err := term.stdIn.Write(append(data, []byte(postfix)...)); err != nil {
+		return NewError(term.uuid, fmt.Sprintf("failed to send string: %v", err))
+	}
+
+	if err := term.WriteLineBreak(); err != nil {
+		return err
 	}
 
 	return nil

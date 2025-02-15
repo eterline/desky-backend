@@ -2,6 +2,7 @@ package monitoring
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/models"
@@ -19,9 +20,9 @@ type MonitorProvider interface {
 }
 
 type MonitoringControllers struct {
-	monitor MonitorProvider
-	websock *websocket.Upgrader
-	ctx     context.Context
+	monitor   MonitorProvider
+	wsHandler *handler.WebSocketHandler
+	ctx       context.Context
 }
 
 func Init(ctx context.Context, m MonitorProvider, compress bool) *MonitoringControllers {
@@ -29,14 +30,15 @@ func Init(ctx context.Context, m MonitorProvider, compress bool) *MonitoringCont
 	log = logger.ReturnEntry().Logger
 
 	return &MonitoringControllers{
+		ctx:     ctx,
 		monitor: m,
-		websock: &websocket.Upgrader{
+
+		wsHandler: handler.NewWebSocketHandler(ctx, &websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
 			EnableCompression: compress,
-		},
-		ctx: ctx,
+		}),
 	}
 }
 
@@ -59,34 +61,29 @@ func (mc *MonitoringControllers) Monitor(w http.ResponseWriter, r *http.Request)
 func (mc *MonitoringControllers) MonitorWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "agents.monitor[WS]"
 
-	conn, err := mc.websock.Upgrade(w, r, nil)
+	sock, err := mc.wsHandler.HandleConnect(w, r)
 	if err != nil {
 		log.Error(err)
-		handler.InternalErrorResponse()
 		return op, err
 	}
+	defer sock.Exit()
 
-	so := handler.NewSocketWithContext(mc.ctx, conn, log)
-	so.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
+	sock.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
 
-	go func(so *handler.WsHandlerWrap, ctx context.Context) {
+	wr := sock.InitWebSocketWriting(false)
+	defer wr.CloseWriting()
 
-		mon, stop := mc.monitor.Pool()
-		defer stop()
+	monitor, stop := mc.monitor.Pool()
+	defer stop()
 
-		for {
-			select {
+	for {
+		select {
 
-			case <-so.Done():
-				so.Exit()
-				return
+		case <-sock.SessionDone():
+			return op, nil
 
-			case data := <-mon:
-				conn.WriteJSON(data)
-			}
+		case data := <-monitor:
+			json.NewEncoder(wr).Encode(data)
 		}
-
-	}(so, mc.ctx)
-
-	return
+	}
 }

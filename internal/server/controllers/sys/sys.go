@@ -2,6 +2,7 @@ package sys
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -36,8 +37,8 @@ type Cacher interface {
 
 type SysHandlerGroup struct {
 	HostService
-	websock *websocket.Upgrader
-	ctx     context.Context
+	wsHandler *handler.WebSocketHandler
+	ctx       context.Context
 }
 
 func Init(ctx context.Context, hs HostService) *SysHandlerGroup {
@@ -46,12 +47,11 @@ func Init(ctx context.Context, hs HostService) *SysHandlerGroup {
 	return &SysHandlerGroup{
 		HostService: hs,
 		ctx:         ctx,
-		websock: &websocket.Upgrader{
-			HandshakeTimeout:  10 * time.Second,
-			EnableCompression: true,
-			ReadBufferSize:    1024,
-			WriteBufferSize:   1024,
-		},
+		wsHandler: handler.NewWebSocketHandler(ctx, &websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		}),
 	}
 }
 
@@ -76,13 +76,6 @@ func (s *SysHandlerGroup) Stats(w http.ResponseWriter, r *http.Request) (op stri
 func (s *SysHandlerGroup) StatsWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "sys.stats[WS]"
 
-	conn, err := s.websock.Upgrade(w, r, nil)
-	if err != nil {
-		log.Error(err)
-		handler.InternalErrorResponse()
-		return op, err
-	}
-
 	infoGet := func() models.StatsResponse {
 		return models.StatsResponse{
 			RAM:  s.RAMInfo(),
@@ -92,30 +85,28 @@ func (s *SysHandlerGroup) StatsWS(w http.ResponseWriter, r *http.Request) (op st
 		}
 	}
 
-	so := handler.NewSocketWithContext(s.ctx, conn, log)
-	so.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
+	socket, err := s.wsHandler.HandleConnect(w, r)
 
-	go func(so *handler.WsHandlerWrap) {
+	defer socket.Exit()
 
-		ticker := time.NewTicker(time.Second * WS_Message_delay)
-		defer ticker.Stop()
+	socket.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
+	wr := socket.InitWebSocketWriting(false)
+	defer wr.CloseWriting()
 
-		for {
-			select {
+	ticker := time.NewTicker(time.Second * WS_Message_delay)
+	defer ticker.Stop()
 
-			case <-so.Done():
-				so.Exit()
-				return
+	for {
+		select {
 
-			case <-ticker.C:
-				data := infoGet()
-				conn.WriteJSON(data)
-			}
+		case <-socket.SessionDone():
+			return
+
+		case <-ticker.C:
+			json.NewEncoder(wr).Encode(infoGet())
 		}
+	}
 
-	}(so)
-
-	return
 }
 
 // HostStatsWS godoc

@@ -19,6 +19,16 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const (
+	MicroByteChunk    = 128   // 128 B
+	SmallByteChunk    = 512   // 512 B
+	UsualByteChunk    = 1024  // 1 KB
+	MiddleByteChunk   = 2048  // 2 KB
+	BigByteChunk      = 4092  // 4 KB
+	ExtremeByteChunk  = 8192  // 8 KB
+	OverflowByteChunk = 16384 // 16 KB
+)
+
 type SSHRepository interface {
 	AddHost(username string, host string, port uint16, osType string, privateKeyUsage bool, password string, key string) error
 	Delete(id int) error
@@ -29,9 +39,9 @@ type SSHRepository interface {
 type SSHLanderControllers struct {
 	ctx context.Context
 
-	term    sshlander.TerminalType
-	repoSSH SSHRepository
-	websock *websocket.Upgrader
+	term      sshlander.TerminalType
+	repoSSH   SSHRepository
+	wsHandler *handler.WebSocketHandler
 
 	logging *logrus.Logger
 
@@ -42,16 +52,14 @@ func Init(ctx context.Context, repo SSHRepository) *SSHLanderControllers {
 	return &SSHLanderControllers{
 		ctx:     ctx,
 		repoSSH: repo,
-		websock: &websocket.Upgrader{
-			HandshakeTimeout:  10 * time.Second,
-			EnableCompression: true,
-			ReadBufferSize:    1024,
-			WriteBufferSize:   1024,
-		},
-
-		term: sshlander.XtermColored,
-
 		logging: logger.ReturnEntry().Logger,
+		term:    sshlander.XtermColored,
+
+		wsHandler: handler.NewWebSocketHandler(ctx, &websocket.Upgrader{
+			ReadBufferSize:    MiddleByteChunk,
+			WriteBufferSize:   MiddleByteChunk,
+			EnableCompression: true,
+		}),
 	}
 }
 
@@ -162,7 +170,7 @@ func getPingedList(hostsData []models.SSHCredentialsT) []models.SSHTestObject {
 		wg.Add(1)
 
 		go func() {
-			var attempt bool
+			var attempt bool = false
 
 			defer func() {
 				testedList[idx] = models.SSHTestObject{
@@ -174,12 +182,16 @@ func getPingedList(hostsData []models.SSHCredentialsT) []models.SSHTestObject {
 
 			pinger, err := ping.NewPinger(credential.Host)
 			if err != nil {
-				attempt = false
 				return
 			}
 
 			pinger.Count = 1
-			attempt = pinger.Run() == nil
+			pinger.Timeout = 5 * time.Second
+			pinger.Run()
+
+			stat := pinger.Statistics()
+
+			attempt = (stat.PacketsSent == stat.PacketsRecv)
 			return
 		}()
 	}
@@ -214,20 +226,20 @@ func (mc *SSHLanderControllers) ConnectionWS(w http.ResponseWriter, r *http.Requ
 
 	// ================================================================
 
-	wsConn, err := mc.websock.Upgrade(w, r, nil)
+	socket, err := mc.wsHandler.HandleConnect(w, r)
 	if err != nil {
 		return op, err
 	}
+	defer socket.Exit()
 
-	socket := handler.NewSocketWithContext(mc.ctx, wsConn, mc.logging)
-
-	xTerm, err := mc.initTerm(socket.UUID(), baseCredentials, ssh.InsecureIgnoreHostKey())
+	term, err := mc.initTerm(socket.ID, baseCredentials, ssh.InsecureIgnoreHostKey())
 	if err != nil {
 		socket.Exit()
 		return op, err
 	}
+	defer term.CloseDial()
 
-	return op, mc.wsSSH(socket, xTerm)
+	return op, mc.wsSSH(socket, term)
 }
 
 func (mc *SSHLanderControllers) initTerm(
@@ -236,43 +248,42 @@ func (mc *SSHLanderControllers) initTerm(
 	callback ssh.HostKeyCallback,
 ) (*sshlander.TerminalSession, error) {
 
-	sshSession, err := sshlander.NewClientSession(creds, callback, uuid)
+	session, err := sshlander.NewClientSession(creds, callback, uuid)
 	if err != nil {
 		return nil, err
 	}
 
-	sshTerm, err := sshlander.ConnectTerminal(mc.ctx, sshSession, mc.term)
+	term, err := sshlander.ConnectTerminal(mc.ctx, session, mc.term)
 	if err != nil {
-		sshSession.CloseDial()
+		session.CloseDial()
 		return nil, err
 	}
 
-	mc.logging.Infof(
-		"ssh terminal connected: %s uuid %s:",
-		sshSession.Instance(), uuid.String(),
-	)
+	mc.logging.Infof("ssh terminal connected: %s uuid: %s", term.Instance(), uuid.String())
 
-	return sshTerm, nil
+	return term, nil
 }
 
-func (mc *SSHLanderControllers) wsSSH(socket *handler.WsHandlerWrap, term *sshlander.TerminalSession) error {
+func (mc *SSHLanderControllers) wsSSH(socket *handler.WebSocketSession, term *sshlander.TerminalSession) error {
+
+	defer mc.logging.Infof("ws uuid: %s ssh closed", term.UUID())
+
+	wsBase64Writer := socket.InitWebSocketBase64Writing()
+	defer wsBase64Writer.CloseWriting()
 
 	go func() {
 
 		defer func() {
-			mc.logging.Infof("stdout closed: %s", term.UUID())
-			mc.logging.Infof("ssh terminal closed: %s", term.UUID())
-			socket.Exit()
-			mc.logging.Infof("ws closed: %s", term.UUID())
+			defer term.WriteExit()
+			mc.logging.Infof("ws uuid: %s terminal session end", term.UUID())
 		}()
 
-		// res := new(models.SSHResponseWS)
-
-		for batch := range term.TerminalRead() {
-			// res.Line = string(batch)
-			socket.WriteBase64(batch)
+		if err := term.FromTerminalBytes(wsBase64Writer, UsualByteChunk); err != nil {
+			mc.logging.Infof(
+				"ws uuid: %s terminal write error: %v",
+				term.UUID(), err,
+			)
 		}
-
 	}()
 
 	data := new(models.SSHRequestWS)
@@ -282,16 +293,15 @@ func (mc *SSHLanderControllers) wsSSH(socket *handler.WsHandlerWrap, term *sshla
 		websocket.CloseGoingAway,
 	) {
 
+		// prepare message
 		data = new(models.SSHRequestWS)
 		if err := json.Unmarshal(msg.Body, data); err != nil {
 			mc.logging.Error(err)
 			continue
 		}
 
-		if err := term.SendTerminal(data.Command); err != nil {
-			socket.WriteJSON(models.SSHResponseWS{
-				Line: fmt.Sprintf("stdin error: %v", err),
-			})
+		//
+		if err := term.Send([]byte(data.Command)); err != nil {
 			mc.logging.Error(err)
 			return err
 		}
@@ -301,10 +311,6 @@ func (mc *SSHLanderControllers) wsSSH(socket *handler.WsHandlerWrap, term *sshla
 			data.Command,
 			term.SSHSession.UUID(),
 		)
-	}
-
-	if err := term.SendTerminal(sshlander.ExitCommand); err != nil {
-		mc.logging.Errorf("send 'exit' error: %v uuid: %s", err, term.UUID())
 	}
 
 	return nil
