@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"os"
 
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/server"
@@ -68,6 +69,8 @@ func Exec(
 		if err := srv.Run(config.SSL().TLS); err != nil {
 			log.Errorf("server running error: %s", err)
 		}
+
+		os.Exit(0)
 	}()
 
 	<-ctx.Done()

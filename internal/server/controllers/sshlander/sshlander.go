@@ -232,14 +232,18 @@ func (mc *SSHLanderControllers) ConnectionWS(w http.ResponseWriter, r *http.Requ
 	}
 	defer socket.Exit()
 
+	wsBase64Writer := socket.InitWebSocketBase64Writing()
+	defer wsBase64Writer.CloseWriting()
+
 	term, err := mc.initTerm(socket.ID, baseCredentials, ssh.InsecureIgnoreHostKey())
 	if err != nil {
+		fmt.Fprintf(wsBase64Writer, "ssh connection error: %v", err)
 		socket.Exit()
 		return op, err
 	}
 	defer term.CloseDial()
 
-	return op, mc.wsSSH(socket, term)
+	return op, mc.wsSSH(wsBase64Writer, socket, term)
 }
 
 func (mc *SSHLanderControllers) initTerm(
@@ -264,12 +268,9 @@ func (mc *SSHLanderControllers) initTerm(
 	return term, nil
 }
 
-func (mc *SSHLanderControllers) wsSSH(socket *handler.WebSocketSession, term *sshlander.TerminalSession) error {
+func (mc *SSHLanderControllers) wsSSH(writer *handler.WebSocketBase64Writing, socket *handler.WebSocketSession, term *sshlander.TerminalSession) error {
 
 	defer mc.logging.Infof("ws uuid: %s ssh closed", term.UUID())
-
-	wsBase64Writer := socket.InitWebSocketBase64Writing()
-	defer wsBase64Writer.CloseWriting()
 
 	go func() {
 
@@ -278,7 +279,7 @@ func (mc *SSHLanderControllers) wsSSH(socket *handler.WebSocketSession, term *ss
 			mc.logging.Infof("ws uuid: %s terminal session end", term.UUID())
 		}()
 
-		if err := term.FromTerminalBytes(wsBase64Writer, UsualByteChunk); err != nil {
+		if err := term.FromTerminalBytes(writer, UsualByteChunk); err != nil {
 			mc.logging.Infof(
 				"ws uuid: %s terminal write error: %v",
 				term.UUID(), err,

@@ -35,7 +35,7 @@ type ThemeObject struct {
 
 var ThemeStorage = map[ThemeName]ThemeObject{
 
-	WhiteTheme: ThemeObject{
+	BlackTheme: ThemeObject{
 		Text:       "rgb(0, 0, 0)",
 		TextInvert: "rgb(216, 216, 216)",
 		TextSmooth: "rgb(160, 160, 160)",
@@ -59,7 +59,7 @@ var ThemeStorage = map[ThemeName]ThemeObject{
 		BarColorThreeMax: "rgb(0, 220, 220)",
 	},
 
-	BlackTheme: ThemeObject{
+	WhiteTheme: ThemeObject{
 		Text:       "rgb(223, 223, 223)",
 		TextInvert: "rgb(0, 0, 0)",
 		TextSmooth: "rgb(160, 160, 160)",
