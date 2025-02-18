@@ -12,7 +12,7 @@ import (
 	"github.com/eterline/desky-backend/internal/services/router/handler"
 	sshlander "github.com/eterline/desky-backend/internal/services/ssh-lander"
 	"github.com/eterline/desky-backend/pkg/logger"
-	"github.com/go-ping/ping"
+	"github.com/eterline/desky-backend/pkg/net-wait-go-forked/wait"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -163,6 +163,7 @@ func (mc *SSHLanderControllers) TestHosts(w http.ResponseWriter, r *http.Request
 
 func getPingedList(hostsData []models.SSHCredentialsT) []models.SSHTestObject {
 	var wg sync.WaitGroup
+	var mu sync.Mutex
 	testedList := make([]models.SSHTestObject, len(hostsData))
 
 	for idx, credential := range hostsData {
@@ -173,25 +174,21 @@ func getPingedList(hostsData []models.SSHCredentialsT) []models.SSHTestObject {
 			var attempt bool = false
 
 			defer func() {
+				mu.Lock()
 				testedList[idx] = models.SSHTestObject{
 					ID:        int(credential.ID),
 					Available: attempt,
 				}
+				mu.Unlock()
+
 				wg.Done()
 			}()
 
-			pinger, err := ping.NewPinger(credential.Host)
-			if err != nil {
-				return
-			}
+			attempt = wait.New(
+				wait.WithDeadline(5*time.Second),
+				wait.WithProto("tcp"),
+			).Do([]string{credential.Socket()})
 
-			pinger.Count = 1
-			pinger.Timeout = 5 * time.Second
-			pinger.Run()
-
-			stat := pinger.Statistics()
-
-			attempt = (stat.PacketsSent == stat.PacketsRecv)
 			return
 		}()
 	}

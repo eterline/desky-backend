@@ -21,6 +21,8 @@ func (a *AgentMonitorService) ValidateAgents(requestList ...AgentRequest) <-chan
 	validationChannel := make(chan ValidateData, 1)
 
 	go func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
 
 		defer close(validationChannel)
 

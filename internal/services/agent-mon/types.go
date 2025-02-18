@@ -1,6 +1,9 @@
 package agentmon
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 type Provider interface {
 	Parameter(string) (any, error)
@@ -17,6 +20,7 @@ type AgentMonitorService struct {
 	sessions []Session
 	ctx      context.Context
 	done     bool
+	mu       sync.Mutex
 }
 
 type AgentRequest interface {
