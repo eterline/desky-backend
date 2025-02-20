@@ -37,9 +37,13 @@ func GetEntry() *CacheService {
 func (cache *CacheService) GetValue(key any) any {
 
 	cache.mu.RLock()
-	defer cache.mu.RLock()
+	defer cache.mu.RUnlock()
 
-	return cache.store[key].CachedObj
+	v, ok := cache.store[key]
+	if ok {
+		return v.CachedObj
+	}
+	return nil
 }
 
 func (cache *CacheService) PushValue(key, value any) {
