@@ -6,7 +6,6 @@ import (
 
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/server"
-	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
 	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/sirupsen/logrus"
 )
@@ -25,23 +24,6 @@ func Exec(
 
 	cache.GetEntry().PushValue("bg", FileBG())
 
-	// ================= Services additional =================
-
-	mon := agentmon.New(ctx)
-
-	for data := range mon.ValidateAgents(config.Services.DeskyAgent.ToRequestList()...) {
-		if data.Err != nil {
-			log.Error(data.Err.Error())
-		} else {
-			log.Infof(
-				"agent successfully connected: %s. id: %s. hostname: %s",
-				data.URL, data.ID, data.Hostname,
-			)
-		}
-	}
-
-	ctx = context.WithValue(ctx, "agentmon", mon)
-
 	// ================= Server parameters =================
 
 	srv := server.New(
@@ -50,7 +32,6 @@ func Exec(
 		config.SSL().KeyFile,
 		config.Server.Name,
 	)
-
 	router := server.ConfigRoutes(ctx, config)
 
 	router.Get("/config", settings.SettingHandler)

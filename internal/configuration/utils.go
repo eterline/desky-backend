@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/eterline/desky-backend/pkg/iptool"
 )
@@ -36,4 +37,14 @@ func (c *Configuration) URLString() string {
 	}
 
 	return fmt.Sprintf("%s://%s", proto, c.ServerSocket())
+}
+
+func (c *Configuration) MQTTConnTimeout() time.Duration {
+
+	tm, err := time.ParseDuration(c.Agent.Server.ConnectTimeout)
+	if err != nil {
+		return 30 * time.Second
+	}
+
+	return tm
 }

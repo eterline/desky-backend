@@ -31,10 +31,11 @@ func OptionCredentials(user, pwd string) OptionFunc {
 type SenderProto string
 
 const (
-	ProtoTCP SenderProto = "tcp"
-	ProtoWS  SenderProto = "ws"
-	ProtoWSS SenderProto = "wss"
-	ProtoSSL SenderProto = "ssl"
+	ProtoTCP   SenderProto = "tcp"
+	ProtoWS    SenderProto = "ws"
+	ProtoWSS   SenderProto = "wss"
+	ProtoSSL   SenderProto = "ssl"
+	ProtoMQTTS SenderProto = "mqtts"
 )
 
 func OptionServer(proto SenderProto, host string, port uint16) OptionFunc {

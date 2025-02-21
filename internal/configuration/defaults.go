@@ -1,5 +1,7 @@
 package configuration
 
+import "github.com/google/uuid"
+
 var FileName string = "settings.yaml"
 
 var DefaultParameters = &Configuration{
@@ -19,32 +21,24 @@ var DefaultParameters = &Configuration{
 		},
 	},
 
-	Services: Services{
-		Proxmox: []ProxmoxInstance{
-			{
-				Node:     "node-1",
-				API:      "https://node-1:8006/api/json",
-				Username: "root",
-				Secret:   "example_key",
-			},
-			{
-				Node:     "node-2",
-				API:      "https://node-2:8006/api/json",
-				Username: "root",
-				Secret:   "example_key",
-			},
+	Agent: AgentOptions{
+		UUID:     uuid.NewString(),
+		Username: "user",
+		Password: "user",
+		Server: AgentServer{
+			ConnectTimeout: "30s",
+			DefaultQoS:     1,
+			Protocol:       "tcp",
+			Host:           "localhost",
+			Port:           1883,
 		},
-		Docker: []DockerInstance{
-			{
-				Name: "docker-1",
-				API:  "tcp://docker.lan",
-			},
-		},
-		DeskyAgent: []DeskyAgent{
-			{
-				API:   "http://host.lan/api",
-				Token: "insert-example-24digit-token",
-			},
-		},
+
+		// -----------uses with api pooling form-----------
+		// DeskyAgent: []DeskyAgent{
+		// 	{
+		// 		API:   "http://host.lan/api",
+		// 		Token: "insert-example-24digit-token",
+		// 	},
+		// },
 	},
 }

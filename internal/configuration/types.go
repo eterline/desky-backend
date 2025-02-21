@@ -1,13 +1,13 @@
 package configuration
 
-import agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
+import "github.com/eterline/desky-backend/pkg/broker"
 
 // ============================= Main app config struct =============================
 type Configuration struct {
-	DevelopEnv bool     `yaml:"dev-env" validate:"boolean"`
-	DB         DB       `yaml:"DB"`
-	Server     Server   `yaml:"HTTP-Server" validate:"required"`
-	Services   Services `yaml:"Services"`
+	DevelopEnv bool   `yaml:"dev-env" validate:"boolean"`
+	DB         DB     `yaml:"DB"`
+	Server     Server `yaml:"HTTP-Server" validate:"required"`
+	Agent      AgentOptions
 }
 
 // Server config struct =============================
@@ -32,53 +32,43 @@ type (
 
 // Logging config struct =============================
 
-// ============================= Services config struct =============================
+// ============================= DeskyAgent config struct =============================
 
-type Services struct {
-	Proxmox    ProxmoxInstanceList `yaml:"Proxmox"`
-	Docker     DockerInstanceList  `yaml:"Docker"`
-	DeskyAgent DeskyAgentList      `yaml:"DeskyAgent"`
+type AgentOptions struct {
+	UUID     string `yaml:"mqtt-id" validate:"required,uuid"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	Server   AgentServer
+}
+
+type AgentServer struct {
+	ConnectTimeout string             `yaml:"connect-timeout" validate:"required"`
+	DefaultQoS     broker.QoSValue    `yaml:"default-qos" validate:"required,oneof=0 1 2 3"`
+	Protocol       broker.SenderProto `yaml:"proto" validate:"required,oneof=ws ssl tcp"`
+	Host           string             `yaml:"host" validate:"required,hostname"`
+	Port           uint16             `yaml:"port" validate:"required,port"`
 }
 
 // Services config struct =============================
-type (
-	ProxmoxInstanceList []ProxmoxInstance
-	ProxmoxInstance     struct {
-		Node     string `yaml:"node"`
-		API      string `yaml:"api-url"`
-		Username string `yaml:"username"`
-		Secret   string `yaml:"secret"`
-	}
 
-	DockerInstanceList []DockerInstance
-	DockerInstance     struct {
-		Name string `yaml:"name"`
-		API  string `yaml:"api"`
-	}
+// -----Can be used with api pooling-----
 
-	DeskyAgentList []DeskyAgent
-	DeskyAgent     struct {
-		API   string `yaml:"api"`
-		Token string `yaml:"token"`
-	}
-)
+// func (a DeskyAgent) ValueAPI() string {
+// 	return a.API
+// }
+// func (a DeskyAgent) ValueToken() string {
+// 	return a.Token
+// }
 
-func (a DeskyAgent) ValueAPI() string {
-	return a.API
-}
-func (a DeskyAgent) ValueToken() string {
-	return a.Token
-}
+// func (a DeskyAgentList) ToRequestList() []agentmon.AgentRequest {
+// 	agentRequests := make([]agentmon.AgentRequest, len(a))
 
-func (a DeskyAgentList) ToRequestList() []agentmon.AgentRequest {
-	agentRequests := make([]agentmon.AgentRequest, len(a))
+// 	for i, agent := range a {
+// 		agentRequests[i] = agent
+// 	}
 
-	for i, agent := range a {
-		agentRequests[i] = agent
-	}
-
-	return agentRequests
-}
+// 	return agentRequests
+// }
 
 // ============================= Db config struct =============================
 

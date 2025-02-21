@@ -78,6 +78,8 @@ func (a *AgentMonitorService) Pool() (<-chan any, context.CancelFunc) {
 	ch := make(chan any)
 	ctx, cancel := context.WithCancel(a.ctx)
 
+	go a.fetchSessions(ctx, ch)
+
 	go func() {
 		tick := time.NewTicker(5 * time.Second)
 		defer tick.Stop()

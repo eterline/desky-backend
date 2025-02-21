@@ -9,6 +9,7 @@ import (
 
 	"github.com/eterline/desky-backend/internal/application"
 	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/pkg/broker"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/eterline/desky-backend/pkg/storage"
 )
@@ -64,6 +65,39 @@ func main() {
 		log.Panicf("db connect error: %s", err)
 	}
 	defer db.Close()
+
+	{
+		mqttBroker := broker.NewListenerWithContext(ctx,
+			broker.OptionInsecureCerts(),
+
+			broker.OptionClientIDString(config.Agent.UUID),
+			broker.OptionServer(
+				config.Agent.Server.Protocol,
+				config.Agent.Server.Host,
+				config.Agent.Server.Port,
+			),
+
+			broker.OptionCredentials(
+				config.Agent.Username,
+				config.Agent.Password,
+			),
+
+			broker.OptionDefaultQoS(config.Agent.Server.DefaultQoS),
+		)
+
+		if err := mqttBroker.Connect(
+			config.MQTTConnTimeout(),
+		); err != nil {
+			log.Fatalf("mqtt connection error: %v", err)
+		}
+		log.Infof("mqtt service connected: %s://%s:%d",
+			config.Agent.Server.Protocol,
+			config.Agent.Server.Host,
+			config.Agent.Server.Port,
+		)
+
+		ctx = context.WithValue(ctx, "agentmon_mqtt", mqttBroker)
+	}
 
 	application.Exec(context.WithValue(ctx, "sql_database", db), log, config)
 }

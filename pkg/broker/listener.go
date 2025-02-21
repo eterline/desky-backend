@@ -47,10 +47,13 @@ type Message interface {
 	Ack()
 }
 
-func (l *ListenerMQTT) ListenTopic(topic string, msgHandle func(Message)) {
-	l.mq.Subscribe(topic, l.opts.QoS, func(c mqtt.Client, m mqtt.Message) {
+func (l *ListenerMQTT) ListenTopic(topic string, msgHandle func(Message)) error {
+	token := l.mq.Subscribe(topic, l.opts.QoS, func(c mqtt.Client, m mqtt.Message) {
 		msgHandle(m)
 	})
+
+	token.Wait()
+	return token.Error()
 }
 
 func (s *ListenerMQTT) Connect(timeout time.Duration) error {

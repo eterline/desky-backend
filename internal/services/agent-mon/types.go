@@ -14,7 +14,7 @@ type CacheStorage interface {
 }
 
 type BrokerListener interface {
-	ListenTopic(topic string, msgHandle func(broker.Message))
+	ListenTopic(topic string, msgHandle func(broker.Message)) error
 }
 
 type Provider interface {

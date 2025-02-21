@@ -55,16 +55,6 @@ func Init(ctx context.Context, hs HostService) *SysHandlerGroup {
 	}
 }
 
-// HostInfo godoc
-//
-//	@Tags			system
-//	@Summary		HostInfo
-//	@Description	host information
-//
-//	@Produce		json
-//	@Success		200	{object}	system.HostInfo
-//	@Failure		500	{object}	handler.APIErrorResponse	"Internal server error"
-//	@Router			/system/info [get]
 func (s *SysHandlerGroup) Stats(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "sys.stats"
 	if websocket.IsWebSocketUpgrade(r) {
@@ -86,15 +76,17 @@ func (s *SysHandlerGroup) StatsWS(w http.ResponseWriter, r *http.Request) (op st
 	}
 
 	socket, err := s.wsHandler.HandleConnect(w, r)
-
 	defer socket.Exit()
 
 	socket.AwaitClose(websocket.CloseNormalClosure, websocket.CloseGoingAway)
 	wr := socket.InitWebSocketWriting(false)
 	defer wr.CloseWriting()
+	sockEnc := json.NewEncoder(wr)
 
 	ticker := time.NewTicker(time.Second * WS_Message_delay)
 	defer ticker.Stop()
+
+	go sockEnc.Encode(infoGet())
 
 	for {
 		select {
@@ -103,119 +95,11 @@ func (s *SysHandlerGroup) StatsWS(w http.ResponseWriter, r *http.Request) (op st
 			return
 
 		case <-ticker.C:
-			json.NewEncoder(wr).Encode(infoGet())
+			sockEnc.Encode(infoGet())
 		}
 	}
-
 }
 
-// HostStatsWS godoc
-//
-//	@Tags			system
-//	@Summary		HostStatsWS
-//	@Description	host information ws interval update = 5s
-//
-//	@Produce		json
-//	@Success		200	{object}	StatsResponse
-//	@Failure		500	{object}	handler.APIErrorResponse	"Internal server error"
-//	@Router			/system/stats [get]
-// func (s *SysHandlerGroup) HostStatsWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
-// 	op = "handler.sys.host-stats-WS"
-
-// 	connection, err := s.websock.Upgrade(w, r, nil)
-// 	defer connection.Close()
-// 	if err != nil {
-// 		return op, err
-// 	}
-
-// 	connection.SetCloseHandler(func(code int, text string) error {
-// 		log.Infof("websocket closed: %s - code: %d, reason: %s", connection.RemoteAddr(), code, text)
-// 		return nil
-// 	})
-
-// 	ticker := time.NewTicker(time.Second * WS_Message_delay)
-// 	defer ticker.Stop()
-
-// 	infoGet := func() models.StatsResponse {
-// 		return models.StatsResponse{
-// 			RAM:  s.RAMInfo(),
-// 			CPU:  s.CPUInfo(),
-// 			Temp: s.Temperatures(),
-// 			Load: s.Load(),
-// 		}
-// 	}
-
-// 	connection.WriteJSON(infoGet)
-
-// 	for {
-// 		select {
-
-// 		case <-ticker.C:
-
-// 			if err := connection.WriteJSON(infoGet()); err != nil {
-// 				switch e := err.(type) {
-// 				case *websocket.CloseError:
-// 					log.Infof("websocket connection: %s - closed", connection.RemoteAddr())
-// 					return op, nil
-// 				default:
-// 					log.Errorf("websocket error: %s", e.Error())
-// 					return op, e
-// 				}
-// 			}
-// 		}
-
-// 	}
-// }
-
-// func (s *SysHandlerGroup) TtyWS(w http.ResponseWriter, r *http.Request) (op string, err error) {
-// 	op = "handler.sys.tty-WS"
-
-// 	connection, err := s.WS.Upgrade(w, r, nil)
-// 	defer connection.Close()
-// 	if err != nil {
-// 		return op, err
-// 	}
-
-// 	log.Infof("websocket connection: %s - opened", connection.RemoteAddr())
-
-// 	for {
-// 		_, msgContent, err := connection.ReadMessage()
-// 		if err != nil {
-
-// 			switch e := err.(type) {
-
-// 			case *websocket.CloseError:
-// 				log.Infof("websocket connection: %s - closed", connection.RemoteAddr())
-// 				return op, nil
-
-// 			default:
-// 				log.Errorf("websocket tty error: %v", err)
-// 				return op, e
-// 			}
-// 		}
-
-// 		resp, err := system.HandleCommand(msgContent)
-// 		if err != nil {
-// 			log.Errorf("websocket tty error: %v", err)
-// 		} else {
-// 			log.Infof("command: '%s' - executed by request: %s", resp.Command, connection.RemoteAddr())
-// 		}
-
-// 		connection.WriteJSON(resp)
-// 	}
-// }
-
-// SystemdUnits godoc
-//
-//	@Tags			system
-//	@Summary		SystemdUnits
-//	@Description	units systemd list
-//	@Param			page	query	string	false	"Page number for pagination (optional)"
-//	@Param			count	query	string	false	"Number of items per page (optional)"
-//	@Produce		json
-//	@Success		200	{object}	[]system.SystemdUnit
-//	@Failure		500	{object}	handler.APIErrorResponse	"Internal server error"
-//	@Router			/system/systemd/status [get]
 func (s *SysHandlerGroup) SystemdUnits(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handler.sys.host-info"
 
@@ -258,20 +142,6 @@ func paginateSystemdUnits(list []system.SystemdUnit, pageNumber, perPage int) []
 	return filtered
 }
 
-// UnitCommand godoc
-//
-//	@Tags			system
-//	@Summary		UnitCommand
-//	@Description	execute device command
-//
-//	@Produce		json
-//	@Param			command	path		string	true	"systemd command"
-//	@Param			service	path		string	true	"systemd service"
-//	@Success		200		{object}	handler.APIResponse
-//	@Failure		400		{object}	handler.APIErrorResponse	"Invalid parameters"
-//	@Failure		500		{object}	handler.APIErrorResponse	"Internal server error"
-//	@Failure		501		{object}	handler.APIErrorResponse	"Uninplemented"
-//	@Router			/system/systemd/{service}/{command} [post]
 func (s *SysHandlerGroup) UnitCommand(w http.ResponseWriter, r *http.Request) (op string, err error) {
 	op = "handler.sys.unit-command"
 

@@ -19,6 +19,7 @@ import (
 	exporters "github.com/eterline/desky-backend/internal/services/exporter"
 	"github.com/eterline/desky-backend/internal/services/router"
 	"github.com/eterline/desky-backend/internal/services/system"
+	"github.com/eterline/desky-backend/pkg/broker"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/eterline/desky-backend/pkg/storage"
 	"github.com/sirupsen/logrus"
@@ -57,8 +58,8 @@ func api(ctx context.Context) (rt *router.RouterService) {
 	rt.Mount("/apps", controllerApps())
 	rt.Mount("/system", controllerSystem(ctx))
 	rt.Mount("/agent", controllerAgent(ctx))
-	rt.Mount("/auth", controllerAuth())
-	rt.Mount("/exporter", controllerExporter())
+	// rt.Mount("/auth", controllerAuth())
+	// rt.Mount("/exporter", controllerExporter())
 	rt.Mount("/ssh", controllerSSH(ctx))
 	rt.Mount("/parameters", controllerParameters())
 
@@ -102,12 +103,24 @@ func controllerSystem(ctx context.Context) (routes *router.RouterService) {
 
 func controllerAgent(ctx context.Context) (routes *router.RouterService) {
 
-	agent := ctx.Value("agentmon").(*agentmon.AgentMonitorService)
+	// agent := ctx.Value("agentmon").(*agentmon.AgentMonitorService)
+	broker := ctx.Value("agentmon_mqtt").(*broker.ListenerMQTT)
+
+	agent := agentmon.NewAgentMonitorServiceWithBroker(ctx, broker)
+	if err := agent.RunDataUpdater("/agent/stats"); err != nil {
+		log.Error(err)
+		return
+	}
+
 	mon := monitoring.Init(ctx, agent, true)
 
 	routes = router.MakeSubroute(
 		router.NewHandler(router.GET, "/monitor", mon.Monitor),
 	)
+
+	// routes = router.MakeSubroute(
+	// 	router.NewHandler(router.GET, "/monitor", mon.Monitor),
+	// )
 
 	return
 }
