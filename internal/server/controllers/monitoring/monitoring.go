@@ -16,7 +16,7 @@ var log *logrus.Logger = nil
 
 type MonitorProvider interface {
 	List() []models.SessionCredentials
-	Pool() (chan any, context.CancelFunc)
+	Pool() (<-chan any, context.CancelFunc)
 }
 
 type MonitoringControllers struct {

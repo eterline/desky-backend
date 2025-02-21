@@ -74,8 +74,8 @@ func (a *AgentMonitorService) List() (data []models.SessionCredentials) {
 	return
 }
 
-func (a *AgentMonitorService) Pool() (ch chan any, cancel context.CancelFunc) {
-	ch = make(chan any)
+func (a *AgentMonitorService) Pool() (<-chan any, context.CancelFunc) {
+	ch := make(chan any)
 	ctx, cancel := context.WithCancel(a.ctx)
 
 	go func() {
@@ -93,7 +93,7 @@ func (a *AgentMonitorService) Pool() (ch chan any, cancel context.CancelFunc) {
 		}
 	}()
 
-	return
+	return ch, cancel
 }
 
 func (a *AgentMonitorService) fetchSessions(ctx context.Context, ch chan<- any) {

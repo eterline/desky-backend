@@ -3,7 +3,19 @@ package agentmon
 import (
 	"context"
 	"sync"
+
+	"github.com/eterline/desky-backend/pkg/broker"
 )
+
+type CacheStorage interface {
+	GetValue(key any) any
+	PushValue(key any, value any)
+	CleanValue(key any)
+}
+
+type BrokerListener interface {
+	ListenTopic(topic string, msgHandle func(broker.Message))
+}
 
 type Provider interface {
 	Parameter(string) (any, error)
