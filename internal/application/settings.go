@@ -59,8 +59,7 @@ func (s *ApplicationSettings) WriteBG(w http.ResponseWriter, r *http.Request) {
 
 	image, ok := cache.GetEntry().GetValue("bg").([]byte)
 	if !ok {
-		e := handler.InternalErrorResponse()
-		handler.WriteJSON(w, e.StatusCode, e)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 

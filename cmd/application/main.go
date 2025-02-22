@@ -3,13 +3,12 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/eterline/desky-backend/internal/application"
 	"github.com/eterline/desky-backend/internal/configuration"
-	"github.com/eterline/desky-backend/pkg/broker"
+	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/eterline/desky-backend/pkg/storage"
 )
@@ -28,7 +27,7 @@ func init() {
 
 	config := configuration.GetConfig()
 
-	if name := os.Getenv("DESKY_DB_NAME"); name != "" {
+	if name := config.DB.File; name != "" {
 		ValueDBname = name
 	}
 
@@ -56,46 +55,25 @@ func main() {
 	)
 	defer stop()
 
+	cache.Init()
+
 	// ================= Database parameters =================
 
-	db := storage.New(storage.NewStorageSQLite(ValueDBname), logger.InitStorageLogger())
-
-	err := db.Connect()
-	if err != nil {
-		log.Panicf("db connect error: %s", err)
-	}
-	defer db.Close()
-
 	{
-		mqttBroker := broker.NewListenerWithContext(ctx,
-			broker.OptionInsecureCerts(),
-
-			broker.OptionClientIDString(config.Agent.UUID),
-			broker.OptionServer(
-				config.Agent.Server.Protocol,
-				config.Agent.Server.Host,
-				config.Agent.Server.Port,
-			),
-
-			broker.OptionCredentials(
-				config.Agent.Username,
-				config.Agent.Password,
-			),
-
-			broker.OptionDefaultQoS(config.Agent.DefaultQoS),
+		db := storage.New(
+			storage.NewStorageSQLite(ValueDBname),
+			logger.InitStorageLogger(),
 		)
 
-		log.Info("connecting to mqtt service")
-
-		if err := mqttBroker.Connect(
-			config.MQTTConnTimeout(),
-		); err != nil {
-			log.Fatalf("mqtt connection error: %v", err)
+		err := db.Connect()
+		if err != nil {
+			log.Panicf("db connect error: %s", err)
 		}
-		log.Info("mqtt service connected: ", config.MQTTSocket())
 
-		ctx = context.WithValue(ctx, "agentmon_mqtt", mqttBroker)
+		defer db.Close()
+
+		ctx = context.WithValue(ctx, "sql_database", db)
 	}
 
-	application.Exec(context.WithValue(ctx, "sql_database", db), log, config)
+	application.Exec(ctx, stop, log, config)
 }

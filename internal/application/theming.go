@@ -85,7 +85,7 @@ var ThemeStorage = map[ThemeName]ThemeObject{
 }
 
 func FileBG() []byte {
-	buff, err := os.ReadFile("./login-bg.jpg")
+	buff, err := os.ReadFile("./bg.jpg")
 	if err != nil {
 		return nil
 	}
