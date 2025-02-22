@@ -103,7 +103,7 @@ func controllerSystem(ctx context.Context) (routes *router.RouterService) {
 
 func controllerAgent(ctx context.Context) (routes *router.RouterService) {
 
-	broker := ctx.Value("agentmon_mqtt").(*broker.ListenerMQTT)
+	broker := ctx.Value("listener_mqtt").(*broker.ListenerMQTT)
 
 	agent := agentmon.NewAgentMonitorServiceWithBroker(ctx, broker)
 	if err := agent.RunDataUpdater("/agent/stats"); err != nil {
