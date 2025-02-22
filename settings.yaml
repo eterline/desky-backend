@@ -1,0 +1,23 @@
+dev-env: false
+DB:
+    file: "desky.db"
+    sync: false
+HTTP-Server:
+    name: ""
+    Address:
+        listen: 0.0.0.0
+        port: 3000
+    SSL:
+        tls-mode: false
+        cert-file: ""
+        key-file: ""
+agent:
+    mqtt-uuid: 52a93c22-a6a3-4ec3-a9b1-1e27a4f9d5bd
+    default-qos: 1
+    Username: desky-backend
+    Password: PROLmoStEriNitHAzY
+    Server:
+        proto: ssl
+        host: docker.lan
+        port: 1883
+        connect-timeout: 120s

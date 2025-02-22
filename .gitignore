@@ -8,7 +8,7 @@ trace*
 logging/*
 !logging/.keep
 
-settings*
+./settings*
 config*
 application
 !*/application
