@@ -109,6 +109,10 @@ func (ab *AgentMonitorServiceWithBroker) collectStatsTo(ctx context.Context, cha
 	ab.mu.RLock()
 	defer ab.mu.RUnlock()
 
+	if len(ab.agentStats) == 0 && ctx.Err() == nil {
+		channel <- struct{}{}
+	}
+
 	for key, data := range ab.agentStats {
 		if ctx.Err() == nil {
 			channel <- data

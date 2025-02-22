@@ -103,7 +103,6 @@ func controllerSystem(ctx context.Context) (routes *router.RouterService) {
 
 func controllerAgent(ctx context.Context) (routes *router.RouterService) {
 
-	// agent := ctx.Value("agentmon").(*agentmon.AgentMonitorService)
 	broker := ctx.Value("agentmon_mqtt").(*broker.ListenerMQTT)
 
 	agent := agentmon.NewAgentMonitorServiceWithBroker(ctx, broker)
@@ -117,10 +116,6 @@ func controllerAgent(ctx context.Context) (routes *router.RouterService) {
 	routes = router.MakeSubroute(
 		router.NewHandler(router.GET, "/monitor", mon.Monitor),
 	)
-
-	// routes = router.MakeSubroute(
-	// 	router.NewHandler(router.GET, "/monitor", mon.Monitor),
-	// )
 
 	return
 }
