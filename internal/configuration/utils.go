@@ -48,3 +48,8 @@ func (c *Configuration) MQTTConnTimeout() time.Duration {
 
 	return tm
 }
+
+func (c *Configuration) MQTTSocket() string {
+	s := c.Agent.Server
+	return fmt.Sprintf("%s://%s:%d", s.Protocol, s.Host, s.Port)
+}

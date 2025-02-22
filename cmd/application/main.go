@@ -82,19 +82,17 @@ func main() {
 				config.Agent.Password,
 			),
 
-			broker.OptionDefaultQoS(config.Agent.Server.DefaultQoS),
+			broker.OptionDefaultQoS(config.Agent.DefaultQoS),
 		)
+
+		log.Info("connecting to mqtt service")
 
 		if err := mqttBroker.Connect(
 			config.MQTTConnTimeout(),
 		); err != nil {
 			log.Fatalf("mqtt connection error: %v", err)
 		}
-		log.Infof("mqtt service connected: %s://%s:%d",
-			config.Agent.Server.Protocol,
-			config.Agent.Server.Host,
-			config.Agent.Server.Port,
-		)
+		log.Info("mqtt service connected: ", config.MQTTSocket())
 
 		ctx = context.WithValue(ctx, "agentmon_mqtt", mqttBroker)
 	}

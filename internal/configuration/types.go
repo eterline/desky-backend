@@ -4,10 +4,10 @@ import "github.com/eterline/desky-backend/pkg/broker"
 
 // ============================= Main app config struct =============================
 type Configuration struct {
-	DevelopEnv bool   `yaml:"dev-env" validate:"boolean"`
-	DB         DB     `yaml:"DB"`
-	Server     Server `yaml:"HTTP-Server" validate:"required"`
-	Agent      AgentOptions
+	DevelopEnv bool         `yaml:"dev-env" validate:"boolean"`
+	DB         DB           `yaml:"DB"`
+	Server     Server       `yaml:"HTTP-Server" validate:"required"`
+	Agent      AgentOptions `yaml:AgentMQTT"`
 }
 
 // Server config struct =============================
@@ -25,8 +25,8 @@ type (
 
 	ServerSSL struct {
 		TLS      bool   `yaml:"tls-mode" validate:"boolean"`
-		CertFile string `yaml:"cert-file" validate:"required"`
-		KeyFile  string `yaml:"key-file" validate:"required"`
+		CertFile string `yaml:"cert-file" validate:"required_if=TLS true"`
+		KeyFile  string `yaml:"key-file" validate:"required_if=TLS  true"`
 	}
 )
 
@@ -35,18 +35,18 @@ type (
 // ============================= DeskyAgent config struct =============================
 
 type AgentOptions struct {
-	UUID     string `yaml:"mqtt-id" validate:"required,uuid"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Server   AgentServer
+	UUID       string          `yaml:"mqtt-uuid" validate:"required,uuid"`
+	DefaultQoS broker.QoSValue `yaml:"default-qos" validate:"oneof=0 1 2 3"`
+	Username   string          `yaml:"Username"`
+	Password   string          `yaml:"Password"`
+	Server     AgentServer     `yaml:"Server"`
 }
 
 type AgentServer struct {
-	ConnectTimeout string             `yaml:"connect-timeout" validate:"required"`
-	DefaultQoS     broker.QoSValue    `yaml:"default-qos" validate:"required,oneof=0 1 2 3"`
 	Protocol       broker.SenderProto `yaml:"proto" validate:"required,oneof=ws ssl tcp"`
 	Host           string             `yaml:"host" validate:"required,hostname"`
 	Port           uint16             `yaml:"port" validate:"required,port"`
+	ConnectTimeout string             `yaml:"connect-timeout" validate:"required"`
 }
 
 // Services config struct =============================

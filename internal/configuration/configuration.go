@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/go-playground/validator/v10"
 	"gopkg.in/yaml.v3"
 )
 
@@ -38,13 +39,15 @@ func Init(path string) error {
 		break
 
 	default:
-		if err != nil {
-			return ErrUnknownExt
-		}
+		return ErrUnknownExt
 	}
 
 	if err != nil {
 		return ErrRead(err)
+	}
+
+	if err = config.Validation(); err != nil {
+		return err
 	}
 
 	instance = config
@@ -59,12 +62,12 @@ func Migrate(fileName string, filePermit fs.FileMode) error {
 		os.O_CREATE|os.O_RDWR,
 		filePermit,
 	)
-
 	defer file.Close()
-
 	if err != nil {
 		return ErrMigration(err)
 	}
+
+	file.Truncate(0)
 
 	content, err := yaml.Marshal(DefaultParameters)
 	if err != nil {
@@ -78,6 +81,7 @@ func Migrate(fileName string, filePermit fs.FileMode) error {
 	return nil
 }
 
-func (c *Configuration) Valid() error {
-	return nil
+func (c *Configuration) Validation() error {
+	s := validator.New()
+	return s.Struct(c)
 }

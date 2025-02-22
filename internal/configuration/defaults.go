@@ -22,23 +22,15 @@ var DefaultParameters = &Configuration{
 	},
 
 	Agent: AgentOptions{
-		UUID:     uuid.NewString(),
-		Username: "user",
-		Password: "user",
+		UUID:       uuid.NewString(),
+		DefaultQoS: 1,
+		Username:   "user",
+		Password:   "user",
 		Server: AgentServer{
 			ConnectTimeout: "30s",
-			DefaultQoS:     1,
 			Protocol:       "tcp",
 			Host:           "localhost",
 			Port:           1883,
 		},
-
-		// -----------uses with api pooling form-----------
-		// DeskyAgent: []DeskyAgent{
-		// 	{
-		// 		API:   "http://host.lan/api",
-		// 		Token: "insert-example-24digit-token",
-		// 	},
-		// },
 	},
 }
