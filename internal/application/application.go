@@ -2,23 +2,72 @@ package application
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/server"
 	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/eterline/desky-backend/pkg/broker"
-	"github.com/sirupsen/logrus"
+	"github.com/eterline/desky-backend/pkg/logger"
+	"github.com/eterline/desky-backend/pkg/storage"
+	"github.com/eterline/desky-backend/pkg/toolkit"
 )
 
-func Exec(
-	ctx context.Context,
-	stop context.CancelFunc,
-	log *logrus.Logger,
-	config *configuration.Configuration,
-) {
-	// ================= MQTT parameters =================
+func Exec(root *toolkit.AppStarter, config *configuration.Configuration) {
 
-	options := []broker.OptionFunc{
+	log := logger.ReturnEntry()
+
+	globalCache := cache.GetEntry()
+	globalCache.PushValue("bg", FileBG())
+
+	settings := new(ApplicationSettings)
+	settings.SetLanguage(LangEN)
+	settings.SetBG("none")
+
+	// ================= Server parameters =================
+
+	router := server.ConfigRoutes(root.Context, config)
+
+	router.Get("/config", settings.SettingHandler)
+	router.Get("/health", HealthHandler)
+	router.Get("/api/theme", settings.ThemeHandler)
+	router.Get("/api/background", settings.WriteBG)
+
+	srv := server.New(
+		config.ServerSocket(),
+		config.SSL().CertFile,
+		config.SSL().KeyFile,
+		config.Server.Name,
+		router,
+	)
+
+	// ================= Run main server parameters =================
+
+	go func() {
+		log.Infof("server start at: %s", config.URLString())
+		defer log.Info("server closed")
+
+		if err := srv.Run(config.SSL().TLS); err != nil {
+			log.Errorf("server running error: %s", err)
+		}
+
+		root.StopApp()
+	}()
+
+	root.Wait()
+
+	log.Info("shutting down desky")
+	if err := srv.Stop(); err != nil {
+		log.Errorf("server close error: %v", err)
+	}
+}
+
+func InitMqtt(ctx context.Context, testInterval time.Duration, config *configuration.Configuration) *broker.ListenerMQTT {
+
+	log := logger.ReturnEntry()
+
+	mqttBroker := broker.NewListenerWithContext(ctx,
 		broker.OptionInsecureCerts(),
 
 		broker.OptionClientIDString(config.Agent.UUID),
@@ -34,71 +83,52 @@ func Exec(
 		),
 
 		broker.OptionDefaultQoS(config.Agent.DefaultQoS),
-	}
-
-	mqttBroker := broker.NewListenerWithContext(ctx, options...)
-
-	log.Info("connecting to mqtt service")
-
-	if err := mqttBroker.Connect(
-		config.MQTTConnTimeout(),
-	); err != nil {
-		log.Fatalf("mqtt connection error: %v", err)
-	}
-	log.Info("mqtt service connected: ", config.MQTTSocket())
-
-	// append broker to global context
-	ctx = context.WithValue(ctx, "listener_mqtt", mqttBroker)
-
-	// ================= App additional =================
-
-	globalCache := cache.GetEntry()
-	defer globalCache.EraseValues()
-
-	globalCache.PushValue("bg", FileBG())
-
-	settings := new(ApplicationSettings)
-	settings.SetLanguage(LangEN)
-	settings.SetBG("none")
-
-	// ================= Server parameters =================
-
-	srv := server.New(
-		config.ServerSocket(),
-		config.SSL().CertFile,
-		config.SSL().KeyFile,
-		config.Server.Name,
 	)
-	router := server.ConfigRoutes(ctx, config)
-
-	router.Get("/config", settings.SettingHandler)
-	router.Get("/health", HealthHandler)
-	router.Get("/api/theme", settings.ThemeHandler)
-	router.Get("/api/background", settings.WriteBG)
-
-	srv.Router(router)
-
-	// ================= Run main server parameters =================
-
-	go func() {
-		log.Infof("server start at: %s", config.URLString())
-		defer log.Info("server closed")
-
-		if err := srv.Run(config.SSL().TLS); err != nil {
-			log.Errorf("server running error: %s", err)
-		}
-
-		if ctx.Err() == nil {
-			stop()
-		}
-	}()
-
-	<-ctx.Done()
-	// =====================================================
-
-	log.Info("shutting down desky")
-
-	if err := srv.Stop(); err != nil {
-		log.Errorf("server close error: %v", err)
+	if err := mqttBroker.Connect(30 * time.Second); err != nil {
+		log.Fatalf("broker connection error: %v", err)
 	}
+
+	go func(b *broker.ListenerMQTT) {
+
+		connAttempts := 0
+		ticks := time.NewTicker(testInterval)
+		defer ticks.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case <-ticks.C:
+				if b.Connected() {
+					fmt.Println(2)
+					continue
+				}
+
+				if err := b.Connect(30 * time.Second); err != nil {
+					log.Errorf("mqtt connection attempt error: %v", err)
+
+					if connAttempts > 4 {
+						panic(err)
+					}
+					connAttempts++
+				}
+			}
+		}
+	}(mqttBroker)
+
+	return mqttBroker
+}
+
+func InitDatabase() *storage.DB {
+	db := storage.New(
+		storage.NewStorageSQLite("desky.db"),
+		logger.InitStorageLogger(),
+	)
+
+	if err := db.Connect(); err != nil {
+		panic(err)
+	}
+
+	return db
 }

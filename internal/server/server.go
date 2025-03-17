@@ -16,6 +16,7 @@ func New(
 	socket string,
 	cert string, key string,
 	serverName string,
+	router http.Handler,
 ) *Server {
 	return &Server{
 		srv: &http.Server{
@@ -23,15 +24,11 @@ func New(
 			TLSConfig: &tls.Config{
 				ServerName: serverName,
 			},
+			Handler: router,
 		},
 		cert: cert,
 		key:  key,
 	}
-}
-
-// Router - set up server Handler router
-func (s *Server) Router(r http.Handler) {
-	s.srv.Handler = r
 }
 
 func (s *Server) Run(ssl bool) error {

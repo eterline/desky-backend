@@ -57,13 +57,13 @@ func (cache *CacheService) CleanValue(key any) {
 	delete(cache.store, key)
 }
 
-func (cache *CacheService) EraseValues() {
+func EraseValues() {
 
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+	instance.mu.Lock()
+	defer instance.mu.Unlock()
 
-	for key := range cache.store {
-		delete(cache.store, key)
+	for key := range instance.store {
+		delete(instance.store, key)
 	}
 }
 

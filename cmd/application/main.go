@@ -1,79 +1,54 @@
 package main
 
 import (
-	"context"
-	"flag"
-	"os/signal"
-	"syscall"
+	"time"
 
 	"github.com/eterline/desky-backend/internal/application"
 	"github.com/eterline/desky-backend/internal/configuration"
+	"github.com/eterline/desky-backend/internal/models"
 	"github.com/eterline/desky-backend/internal/services/cache"
 	"github.com/eterline/desky-backend/pkg/logger"
-	"github.com/eterline/desky-backend/pkg/storage"
+	"github.com/eterline/desky-backend/pkg/toolkit"
 )
 
 var (
-	ValueDBname = "desky.db"
+	config *configuration.Configuration
 )
 
-func init() {
-	c := flag.String("config", configuration.FileName, "Set configuration file path.")
-	flag.Parse()
-
-	if err := configuration.Init(*c); err != nil {
-		panic(err)
-	}
-
-	config := configuration.GetConfig()
-
-	if name := config.DB.File; name != "" {
-		ValueDBname = name
-	}
-
-	if err := logger.InitLogger(
-		logger.WithDevEnvBool(config.DevelopEnv),
-		logger.WithPath("./logs"),
-		logger.WithPretty(),
-	); err != nil {
-		panic(err)
-	}
-}
-
-// @title		Desky API test
-// @version	1.0
-// @BasePath	/api/v1
 func main() {
 
-	log := logger.ReturnEntry().Logger
-	config := configuration.GetConfig()
+	root := toolkit.InitAppStart(func() error {
 
-	ctx, stop := signal.NotifyContext(
-		context.Background(),
-		syscall.SIGINT,
-		syscall.SIGTERM,
-	)
-	defer stop()
+		if err := configuration.Init(configuration.FileName); err != nil {
+			return err
+		}
+		config = configuration.GetConfig()
 
-	cache.Init()
-
-	// ================= Database parameters =================
-
-	{
-		db := storage.New(
-			storage.NewStorageSQLite(ValueDBname),
-			logger.InitStorageLogger(),
-		)
-
-		err := db.Connect()
-		if err != nil {
-			log.Panicf("db connect error: %s", err)
+		if err := logger.InitLogger(
+			logger.WithDevEnvBool(config.DevelopEnv),
+			logger.WithPath("./logs"),
+			logger.WithPretty(),
+		); err != nil {
+			return err
 		}
 
-		defer db.Close()
+		return nil
+	})
+	defer root.StopApp()
 
-		ctx = context.WithValue(ctx, "sql_database", db)
-	}
+	// Initialize Database connection to app
+	db := application.InitDatabase()
+	defer db.Close()
+	root.AddValue(models.DATABASE_CONTEXT_KEY, db)
 
-	application.Exec(ctx, stop, log, config)
+	// Inititalize MQTT connection for app
+	mqtt := application.InitMqtt(root.Context, 10*time.Minute, config)
+	defer mqtt.Close()
+	root.AddValue(models.MESSAGE_BROKER_CONTEXT_KEY, mqtt)
+
+	// Init application cache singletone
+	cache.Init()
+	defer cache.EraseValues()
+
+	application.Exec(root, config)
 }

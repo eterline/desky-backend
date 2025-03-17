@@ -81,3 +81,10 @@ func (s *ListenerMQTT) Connect(timeout time.Duration) error {
 		return fmt.Errorf("mqtt connection timeout")
 	}
 }
+func (s *ListenerMQTT) Connected() bool {
+	return s.mq.IsConnected()
+}
+
+func (s *ListenerMQTT) Close() {
+	s.mq.Disconnect(0)
+}
