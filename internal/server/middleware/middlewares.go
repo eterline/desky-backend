@@ -4,9 +4,10 @@ import (
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/configuration"
-	"github.com/eterline/desky-backend/internal/services/router/handler"
+	"github.com/eterline/desky-backend/internal/services/handler"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
@@ -85,4 +86,34 @@ func (mw *MiddlewareService) PanicRecoverer(next http.Handler) http.Handler {
 
 		next.ServeHTTP(writer, request)
 	})
+}
+
+func PreSetHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		{
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Content-Security-Policy", "default-src 'self'")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func FilterContentType(next http.Handler) http.Handler {
+	return middleware.AllowContentType(
+		"application/json",
+		"multipart/form-data",
+	)(next)
+}
+
+func CorsPolicy(next http.Handler) http.Handler {
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:9400"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	})
+
+	return c.Handler(next)
 }

@@ -6,15 +6,11 @@ import (
 	"github.com/eterline/desky-backend/internal/configuration"
 	"github.com/eterline/desky-backend/internal/models"
 	"github.com/eterline/desky-backend/internal/repository"
-	"github.com/eterline/desky-backend/internal/server/controllers/applications"
-	"github.com/eterline/desky-backend/internal/server/controllers/frontend"
-	"github.com/eterline/desky-backend/internal/server/controllers/monitoring"
-	"github.com/eterline/desky-backend/internal/server/controllers/parameters"
-	ssh "github.com/eterline/desky-backend/internal/server/controllers/sshlander"
-	"github.com/eterline/desky-backend/internal/server/controllers/sys"
+	"github.com/eterline/desky-backend/internal/server/controllers"
+	middlewares "github.com/eterline/desky-backend/internal/server/middleware"
 	agentmon "github.com/eterline/desky-backend/internal/services/agent-mon"
 	"github.com/eterline/desky-backend/internal/services/apps/appsdb"
-	"github.com/eterline/desky-backend/internal/services/router"
+	"github.com/eterline/desky-backend/internal/services/handler"
 	"github.com/eterline/desky-backend/internal/services/system"
 	"github.com/eterline/desky-backend/pkg/broker"
 	"github.com/eterline/desky-backend/pkg/logger"
@@ -28,23 +24,25 @@ var (
 	databaseInstance *storage.DB    = nil
 )
 
-func ConfigRoutes(
-	ctx context.Context,
-	c *configuration.Configuration,
-) (r *router.RouterService) {
-	r = router.NewRouterService()
+func ConfigRoutes(ctx context.Context, c *configuration.Configuration) (r *chi.Mux) {
+
+	r = chi.NewRouter()
 
 	log = logger.ReturnEntry().Logger
 	databaseInstance = ctx.Value(models.DATABASE_CONTEXT_KEY).(*storage.DB)
 
-	f := frontend.Init()
+	f := controllers.InitFronEnd()
 
-	r.Get("/", router.InitController(f.HTML))
-	r.Get("/assets/*", router.InitController(f.Assets))
-	r.Get("/static/*", router.InitController(f.Static))
-	r.Get("/wallpaper/*", router.InitController(f.WallpaperHandle))
+	r.Get("/", handler.InitController(f.HTML))
+	r.Get("/assets/*", handler.InitController(f.Assets))
+	r.Get("/static/*", handler.InitController(f.Static))
+	r.Get("/wallpaper/*", handler.InitController(f.WallpaperHandle))
 
-	r.MountWith("/api", api(ctx))
+	r.With(
+		middlewares.CorsPolicy,
+		middlewares.FilterContentType,
+		middlewares.PreSetHeaders,
+	).Mount("/api", api(ctx))
 
 	return
 }
@@ -57,20 +55,20 @@ func api(ctx context.Context) *chi.Mux {
 	rt.Route("/apps", func(r chi.Router) {
 
 		appRepo := repository.NewAppsRepository(databaseInstance)
-		srv := applications.Init(appsdb.New(appRepo), appRepo)
+		srv := controllers.InitApplications(appsdb.New(appRepo), appRepo)
 
-		r.Get("/table", router.InitController(srv.ShowTable))
-		r.Post("/table/{topic}", router.InitController(srv.CreateApp))
-		r.Delete("/table/{id}", router.InitController(srv.DeleteAppById))
-		r.Patch("/table/{id}", router.InitController(srv.EditApp))
+		r.Get("/table", handler.InitController(srv.ShowTable))
+		r.Post("/table/{topic}", handler.InitController(srv.CreateApp))
+		r.Delete("/table/{id}", handler.InitController(srv.DeleteAppById))
+		r.Patch("/table/{id}", handler.InitController(srv.EditApp))
 	})
 
 	rt.Route("/system", func(r chi.Router) {
 
-		srv := sys.Init(ctx, system.New())
+		srv := controllers.InitSystem(ctx, system.New())
 
-		r.Get("/stats", router.InitController(srv.Stats))
-		r.Get("/systemd", router.InitController(srv.SystemdUnits))
+		r.Get("/stats", handler.InitController(srv.Stats))
+		r.Get("/systemd", handler.InitController(srv.SystemdUnits))
 	})
 
 	rt.Route("/agent", func(r chi.Router) {
@@ -81,31 +79,31 @@ func api(ctx context.Context) *chi.Mux {
 			log.Error(err)
 			return
 		}
-		mon := monitoring.Init(ctx, agent, true)
+		mon := controllers.InitMonitoring(ctx, agent, true)
 
-		r.Get("/monitor", router.InitController(mon.Monitor))
+		r.Get("/monitor", handler.InitController(mon.Monitor))
 	})
 
 	rt.Route("/ssh", func(r chi.Router) {
 
 		sshRepository := repository.NewSSHLanderRepository(databaseInstance)
-		srv := ssh.Init(ctx, sshRepository)
+		srv := controllers.InitSSHlander(ctx, sshRepository)
 
-		r.Get("/list", router.InitController(srv.ListHosts))
-		r.Post("/list", router.InitController(srv.AppendHost))
-		r.Delete("/list/{id}", router.InitController(srv.DeleteHost))
+		r.Get("/list", handler.InitController(srv.ListHosts))
+		r.Post("/list", handler.InitController(srv.AppendHost))
+		r.Delete("/list/{id}", handler.InitController(srv.DeleteHost))
 
-		r.Get("/ping", router.InitController(srv.TestHosts))
-		r.Get("/connect/{id}", router.InitController(srv.ConnectionWS))
+		r.Get("/ping", handler.InitController(srv.TestHosts))
+		r.Get("/connect/{id}", handler.InitController(srv.ConnectionWS))
 	})
 
 	rt.Route("/parameters", func(r chi.Router) {
 		coll := logger.NewLoggerCollector()
 		logger.HookLevelWriter(coll, logrus.ErrorLevel)
-		srv := parameters.Init(coll)
+		srv := controllers.InitParameters(coll)
 
-		r.Get("/logs", router.InitController(srv.GetLogs))
-		r.Get("/errors", router.InitController(srv.Errors))
+		r.Get("/logs", handler.InitController(srv.GetLogs))
+		r.Get("/errors", handler.InitController(srv.Errors))
 	})
 
 	return rt

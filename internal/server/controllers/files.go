@@ -1,4 +1,4 @@
-package files
+package controllers
 
 import (
 	"fmt"
@@ -6,19 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/eterline/desky-backend/internal/services/router/handler"
-	"github.com/eterline/desky-backend/pkg/logger"
-	"github.com/sirupsen/logrus"
+	"github.com/eterline/desky-backend/internal/services/handler"
 )
-
-var log *logrus.Logger
 
 type FilesHandlerGroup struct {
 	BasePath string
 }
 
-func Init(base string) *FilesHandlerGroup {
-	log = logger.ReturnEntry().Logger
+func InitFiles(base string) *FilesHandlerGroup {
 	return &FilesHandlerGroup{
 		BasePath: base,
 	}
@@ -29,8 +24,6 @@ func (fh *FilesHandlerGroup) PathWithBase(path string) string {
 }
 
 func (fh *FilesHandlerGroup) ServeDir(dir string) http.Handler {
-	op := "files.serve-dir"
-	log.Debugf("requested controller: %s", op)
 
 	fs := http.FileServer(http.Dir(fh.PathWithBase(dir)))
 
@@ -47,8 +40,5 @@ func (fh *FilesHandlerGroup) ServeDir(dir string) http.Handler {
 }
 
 func (fh *FilesHandlerGroup) ServeFile(w http.ResponseWriter, r *http.Request, filePath string) {
-	op := "files.serve-file"
-	log.Debugf("requested controller: %s", op)
-
 	http.ServeFile(w, r, fh.PathWithBase(filePath))
 }

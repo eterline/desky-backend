@@ -1,11 +1,11 @@
-package applications
+package controllers
 
 import (
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/models"
 	"github.com/eterline/desky-backend/internal/services/apps/appsfile"
-	"github.com/eterline/desky-backend/internal/services/router/handler"
+	"github.com/eterline/desky-backend/internal/services/handler"
 )
 
 type AppsService interface {
@@ -24,7 +24,7 @@ type AppsHandlerGroup struct {
 	Del  AppsDeleter
 }
 
-func Init(service AppsService, del AppsDeleter) *AppsHandlerGroup {
+func InitApplications(service AppsService, del AppsDeleter) *AppsHandlerGroup {
 	return &AppsHandlerGroup{
 		Apps: service,
 		Del:  del,

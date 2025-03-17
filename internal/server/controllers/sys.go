@@ -1,4 +1,4 @@
-package sys
+package controllers
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/services/router/handler"
+	"github.com/eterline/desky-backend/internal/services/handler"
 	"github.com/eterline/desky-backend/internal/services/system"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/gorilla/websocket"
@@ -41,7 +41,7 @@ type SysHandlerGroup struct {
 	ctx       context.Context
 }
 
-func Init(ctx context.Context, hs HostService) *SysHandlerGroup {
+func InitSystem(ctx context.Context, hs HostService) *SysHandlerGroup {
 	log = logger.ReturnEntry().Logger
 
 	return &SysHandlerGroup{

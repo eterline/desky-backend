@@ -5,8 +5,44 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/go-playground/validator/v10"
 )
+
+func InitController(handle APIHandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		log := logger.ReturnEntry()
+
+		op, err := handle(w, r)
+
+		log.Debugf("requested controller: %s", op)
+
+		if err != nil {
+
+			log.Errorf(
+				"API Error - path: %s | controller: %s | error: %s",
+				r.URL.Path, op, err.Error(),
+			)
+
+			switch e := err.(type) {
+
+			case *APIErrorResponse:
+				WriteJSON(w, e.StatusCode, e)
+				return
+
+			case *validator.ValidationErrors:
+				WriteJSON(w, http.StatusBadRequest, e)
+				return
+
+			default:
+				errDefault := InternalErrorResponse()
+				WriteJSON(w, errDefault.StatusCode, errDefault)
+				return
+			}
+		}
+	}
+}
 
 // Decode JSON request body to data structure
 func DecodeRequest(r *http.Request, v any) error {

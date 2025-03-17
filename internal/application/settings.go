@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/eterline/desky-backend/internal/services/cache"
-	"github.com/eterline/desky-backend/internal/services/router/handler"
+	"github.com/eterline/desky-backend/internal/services/handler"
 )
 
 type AppLanguage string
@@ -65,4 +65,8 @@ func (s *ApplicationSettings) WriteBG(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Write(image)
+}
+
+func HealthHandler(w http.ResponseWriter, r *http.Request) {
+	handler.StatusOK(w, "health")
 }

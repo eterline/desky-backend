@@ -1,4 +1,4 @@
-package ssh
+package controllers
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/services/router/handler"
+	"github.com/eterline/desky-backend/internal/services/handler"
 	sshlander "github.com/eterline/desky-backend/internal/services/ssh-lander"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/eterline/desky-backend/pkg/net-wait-go-forked/wait"
@@ -48,7 +48,7 @@ type SSHLanderControllers struct {
 	sshMu sync.Mutex
 }
 
-func Init(ctx context.Context, repo SSHRepository) *SSHLanderControllers {
+func InitSSHlander(ctx context.Context, repo SSHRepository) *SSHLanderControllers {
 	return &SSHLanderControllers{
 		ctx:     ctx,
 		repoSSH: repo,

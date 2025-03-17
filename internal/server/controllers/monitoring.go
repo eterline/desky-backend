@@ -1,4 +1,4 @@
-package monitoring
+package controllers
 
 import (
 	"context"
@@ -6,13 +6,10 @@ import (
 	"net/http"
 
 	"github.com/eterline/desky-backend/internal/models"
-	"github.com/eterline/desky-backend/internal/services/router/handler"
+	"github.com/eterline/desky-backend/internal/services/handler"
 	"github.com/eterline/desky-backend/pkg/logger"
 	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 )
-
-var log *logrus.Logger = nil
 
 type MonitorProvider interface {
 	List() []models.SessionCredentials
@@ -25,7 +22,7 @@ type MonitoringControllers struct {
 	ctx       context.Context
 }
 
-func Init(ctx context.Context, m MonitorProvider, compress bool) *MonitoringControllers {
+func InitMonitoring(ctx context.Context, m MonitorProvider, compress bool) *MonitoringControllers {
 
 	log = logger.ReturnEntry().Logger
 

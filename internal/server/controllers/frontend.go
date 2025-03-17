@@ -1,23 +1,22 @@
-package frontend
+package controllers
 
 import (
 	"net/http"
 
-	"github.com/eterline/desky-backend/internal/server/controllers/files"
-	"github.com/eterline/desky-backend/internal/services/router/handler"
+	"github.com/eterline/desky-backend/internal/services/handler"
 )
 
 type FrontendHandlerGroup struct {
-	FS, Storage *files.FilesHandlerGroup
+	FS, Storage *FilesHandlerGroup
 	HTMLfile    string
 }
 
-func Init() *FrontendHandlerGroup {
+func InitFronEnd() *FrontendHandlerGroup {
 	return &FrontendHandlerGroup{
 		HTMLfile: "index.html",
 
-		FS:      files.Init("./web"),
-		Storage: files.Init("./storage"),
+		FS:      InitFiles("./web"),
+		Storage: InitFiles("./storage"),
 	}
 }
 

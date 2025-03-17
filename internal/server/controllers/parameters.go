@@ -1,4 +1,4 @@
-package parameters
+package controllers
 
 import (
 	"bufio"
@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/eterline/desky-backend/internal/services/router/handler"
+	"github.com/eterline/desky-backend/internal/services/handler"
 )
 
 type LoggingCollector interface {
@@ -19,7 +19,7 @@ type ParametersControllers struct {
 	logCollect LoggingCollector
 }
 
-func Init(collect LoggingCollector) *ParametersControllers {
+func InitParameters(collect LoggingCollector) *ParametersControllers {
 	return &ParametersControllers{
 		logCollect: collect,
 	}
